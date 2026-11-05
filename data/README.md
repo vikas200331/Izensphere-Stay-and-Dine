@@ -73,3 +73,4 @@ To link the branding assets to your site's public files:
 ```bash
 cp data/files/* sites/<your-site-name>/public/files/
 ```
+

@@ -46,3 +46,4 @@ def import_all():
 			imported += 1
 		frappe.db.commit()
 		print(f"Imported/updated {imported} records for {dt}")
+

@@ -2843,7 +2843,6 @@ LOCK TABLES `tabRoom Block` WRITE;
 INSERT INTO `tabRoom Block` VALUES
 ('226t32802g','2026-11-03 12:06:03.861638','2026-11-03 12:06:03.861638','Administrator','Administrator',0,0,'Izensphere Palace & Resort','Izensphere Palace & Resort-104','Maintenance','2026-11-02','2026-11-06','Active','Plumbing valve overhaul & bathroom tile regrouting',NULL,NULL,NULL,NULL,NULL,NULL),
 ('22780ihro1','2026-11-03 12:06:03.934743','2026-11-03 12:06:03.934743','Administrator','Administrator',0,0,'Izensphere Palace & Resort','Izensphere Palace & Resort-204','VIP Hold','2026-11-07','2026-11-10','Active','Hold for Infosys Managing Director Delegation',NULL,NULL,NULL,NULL,NULL,NULL),
-('2m9gbqrmka','2026-11-02 17:54:52.190325','2026-11-02 17:54:52.190325','Administrator','Administrator',0,0,'Sunrise','HTL-ROOM-2026-00005','Owner','2026-11-02','2026-11-03','Active',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 ('8g75okbsh4','2026-11-03 14:06:16.759247','2026-11-03 14:06:16.759247','Administrator','Administrator',0,0,'Izensphere Stay and Dine','Izensphere Dine-104','Maintenance','2026-11-02','2026-11-06','Active','HVAC compressor overhaul & chilled water pipe insulation repair',NULL,NULL,NULL,NULL,NULL,NULL),
 ('8g7aal9mhl','2026-11-03 14:06:16.764349','2026-11-03 14:06:16.764349','Administrator','Administrator',0,0,'Izensphere Stay and Dine','Izensphere Dine-206','VIP Hold','2026-11-05','2026-11-08','Active','Blocked for Infosys Executive Delegation Arrival',NULL,NULL,NULL,NULL,NULL,NULL),
 ('a775tmanl2','2026-11-03 11:25:22.341490','2026-11-03 11:25:22.341490','Administrator','Administrator',0,0,'Izensphere Palace & Resort','Izensphere Palace & Resort-303','Maintenance','2026-11-08','2026-11-11','Active','AC compressor replacement - vendor booked',NULL,NULL,NULL,NULL,NULL,NULL);
@@ -9016,12 +9015,6 @@ SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `tabRoom` WRITE;
 /*!40000 ALTER TABLE `tabRoom` DISABLE KEYS */;
 INSERT INTO `tabRoom` VALUES
-('HTL-ROOM-2026-00005','2026-10-01 17:01:07.583608','2026-10-01 17:01:07.583608','Administrator','Administrator',0,0,'Class 6 Room',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Clean','Vacant',NULL),
-('HTL-ROOM-2026-00006','2026-10-01 17:01:15.118221','2026-10-01 17:01:15.118221','Administrator','Administrator',0,0,'Class 7 Room',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Clean','Vacant',NULL),
-('HTL-ROOM-2026-00007','2026-10-01 17:01:26.990925','2026-10-01 17:01:26.990925','Administrator','Administrator',0,0,'Class 8 Room',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Clean','Vacant',NULL),
-('HTL-ROOM-2026-00008','2026-10-01 17:01:34.429705','2026-10-01 17:01:34.429705','Administrator','Administrator',0,0,'Class 9 Room',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Clean','Vacant',NULL),
-('HTL-ROOM-2026-00009','2026-10-01 17:01:43.649356','2026-10-01 17:01:43.649356','Administrator','Administrator',0,0,'Class 10 Room',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Clean','Vacant',NULL),
-('HTL-ROOM-2026-00010','2026-10-01 17:01:57.766903','2026-10-01 17:01:57.766903','Administrator','Administrator',0,0,'Science Lab',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Clean','Vacant',NULL),
 ('Izensphere Beach Homestay-Room 1','2026-11-03 11:25:24.061934','2026-11-03 11:25:24.061934','Administrator','Administrator',0,0,NULL,'Room 1',NULL,NULL,NULL,NULL,NULL,'Izensphere Beach Homestay','Izensphere Beach Homestay-TFAC','Top Floor','Clean','Vacant',NULL),
 ('Izensphere Beach Homestay-Room 2','2026-11-03 11:25:24.075893','2026-11-03 11:25:24.075893','Administrator','Administrator',0,0,NULL,'Room 2',NULL,NULL,NULL,NULL,NULL,'Izensphere Beach Homestay','Izensphere Beach Homestay-UF2R','Upper Floor','Clean','Vacant',NULL),
 ('Izensphere Beach Homestay-Room 3','2026-11-03 11:25:24.089278','2026-11-03 11:25:24.089278','Administrator','Administrator',0,0,NULL,'Room 3',NULL,NULL,NULL,NULL,NULL,'Izensphere Beach Homestay','Izensphere Beach Homestay-UF2R','Upper Floor','Clean','Vacant',NULL),
@@ -11341,4 +11334,4 @@ SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-11-05  9:07:06
+-- Dump completed on 2026-11-05 10:26:57
