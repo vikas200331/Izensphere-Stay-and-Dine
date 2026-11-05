@@ -1632,7 +1632,7 @@ export default function PublicBooking() {
             <div className="mt-12 flex flex-col items-center gap-3">
               <LanguageSwitcher className="md:hidden" />
               <p className="text-center text-xs text-zinc-400">
-                {t("Powered by Kamra - the open-source, agent-ready hotel PMS")}
+                {t("Powered by Izensphere Stay and Dine · A World of Flavours")}
               </p>
             </div>
           </div>

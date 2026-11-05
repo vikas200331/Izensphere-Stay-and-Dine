@@ -234,7 +234,7 @@ export function WebhooksPage({ property }: { property: string }) {
             <div>
               <CardTitle>{t("Endpoints")}</CardTitle>
               <p className="mt-0.5 text-xs text-zinc-400">
-                {t("Kamra POSTs a signed JSON event to each endpoint. Failed deliveries are retried for about 8 hours.")}
+                {t("Izensphere Stay and Dine POSTs a signed JSON event to each endpoint. Failed deliveries are retried for about 8 hours.")}
               </p>
             </div>
             {editing === null && (

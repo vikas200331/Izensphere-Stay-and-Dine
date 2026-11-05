@@ -743,7 +743,7 @@ export default function GroupBookingDialog(props: {
                   <input type="number" min={0} max={100} className={inputCls} value={contract.attrition_pct}
                     placeholder={t("e.g. 10")}
                     onChange={(e) => setContract({ ...contract, attrition_pct: e.target.value })} />
-                  <span className="mt-1 block text-xs text-zinc-500">{t("Kamra warns you before the hold date if the group has used fewer rooms than agreed.")}</span>
+                  <span className="mt-1 block text-xs text-zinc-500">{t("Izensphere Stay and Dine warns you before the hold date if the group has used fewer rooms than agreed.")}</span>
                 </label>
               </div>
               <p className="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600">

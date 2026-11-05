@@ -113,7 +113,7 @@ export default function CashForecast() {
         <Button variant="outline" onClick={() => load(opening, span)}>{translate("Update")}</Button>
         <p className="max-w-md text-xs text-zinc-500">
           {data?.opening_source === "tills"
-            ? translate("Starting from the cash in open tills. Kamra does not know your bank balance, so type it in for a full picture.")
+            ? translate("Starting from the cash in open tills. Izensphere Stay and Dine does not know your bank balance, so type it in for a full picture.")
             : translate("Starting from the amount you entered.")}
         </p>
       </div>

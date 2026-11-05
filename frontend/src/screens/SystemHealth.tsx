@@ -124,7 +124,7 @@ export default function SystemHealth() {
             {t("System Health")}
           </h1>
           <p className="mt-0.5 text-sm text-zinc-500">
-            {t("Check the status of this Kamra site and whether a newer open-source release is available.")}
+            {t("Check the status of this Izensphere Stay and Dine site and whether a newer open-source release is available.")}
           </p>
         </div>
         <Button

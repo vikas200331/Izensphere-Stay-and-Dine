@@ -6,8 +6,8 @@ import { cn } from "../lib/utils"
 import { Markdown } from "../lib/markdown"
 import { t as translate, useUILanguage } from "../lib/i18n"
 
-/** How-to help assistant - explains how to use Kamra (it never acts on data;
- *  that's Kamra Agent). Streams answers, grounded in the app. */
+/** How-to help assistant - explains how to use Izensphere Stay and Dine (it never acts on data;
+ *  that's Izensphere AI). Streams answers, grounded in the app. */
 
 interface Msg {
   role: "user" | "assistant"
@@ -133,7 +133,7 @@ export default function HelpPanel() {
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
             {msgs.length === 0 && (
               <div className="space-y-2">
-                <p className="text-sm text-zinc-600">{translate("Ask how to do anything in Kamra - I'll walk you through it.")}</p>
+                <p className="text-sm text-zinc-600">{translate("Ask how to do anything in Izensphere Stay and Dine - I'll walk you through it.")}</p>
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s}

@@ -24,7 +24,7 @@ export type Lang = string
 
 // Guest pages keep their own choice: a guest (or staff previewing /book)
 // picking Spanish there must not switch the desk, and the reverse.
-const GUEST_PAGE = /^(\/kamra)?\/(book|stay|checkin)(\/|$)/
+const GUEST_PAGE = /^(\/(?:kamra|izensphere-stay-and-dine|stay-and-dine))?\/(book|stay|checkin)(\/|$)/
 const key = () => (GUEST_PAGE.test(window.location.pathname) ? "kamra-guest-lang" : "kamra-lang")
 const codes = new Set(LANGS.map((l) => l.code))
 

@@ -2,19 +2,22 @@ import { RateOptions } from "./RateOptions"
 import { useEffect, useState } from "react"
 import { htmlToText } from "../lib/utils"
 import { useNavigate } from "react-router-dom"
-import { ChevronDown, Loader2, Megaphone, Plus, ShieldAlert, Star, Trash2, X } from "lucide-react"
+import { Camera, ChevronDown, ChevronLeft, ChevronRight, Eye, Loader2, Megaphone, Plus, ShieldAlert, Star, Trash2, X } from "lucide-react"
 import {
   call,
   createBooking,
+  getBookingAvailability,
   getBookingOptions,
   getCurrentProperty,
   getQuote,
   guestAlert,
   guestSearch,
+  type AvailableRoomItem,
   type BookingOptions,
   type GuestAlert,
   type GuestHit,
   type Quote,
+  type RoomAvailabilitySummaryItem,
 } from "../lib/api"
 import { Button } from "./ui/button"
 import { cur, moneyLocale, useLocale } from "../lib/money"
@@ -72,12 +75,6 @@ function Field(props: { label: string; children: React.ReactNode }) {
   )
 }
 
-
-interface FreeRoom {
-  name: string
-  room_number: string
-  housekeeping_status?: string
-}
 
 interface WalkInResult {
   reservation: string
@@ -151,6 +148,7 @@ export function BookingDialog(props: {
     guest_name: props.initial.guest_name ?? "",
     phone: props.initial.phone ?? "",
     room_type: props.initial.room_type ?? "",
+    room: props.initial.room ?? "",
     check_in_date: props.initial.date ?? todayLocal(),
     nights: props.initial.stays ?? 1,
     adults: props.initial.adults ?? 2,
@@ -274,7 +272,13 @@ export function BookingDialog(props: {
   const [walkIn, setWalkIn] = useState(!!props.initial.walkIn)
   // the room clicked on the tape chart; dropped once the desk picks another type
   const pinnedRoom = !!props.initial.room && !walkIn && form.room_type === props.initial.room_type
-  const [freeRooms, setFreeRooms] = useState<FreeRoom[] | null>(null)
+  // Real-time room availability across all room types and individual rooms
+  const [availLoading, setAvailLoading] = useState(false)
+  const [availSummary, setAvailSummary] = useState<RoomAvailabilitySummaryItem[]>([])
+  const [availRooms, setAvailRooms] = useState<AvailableRoomItem[]>([])
+  const [availError, setAvailError] = useState<string | null>(null)
+  const [photoIndex, setPhotoIndex] = useState(0)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const [walk, setWalk] = useState({
     room: "",
     id_type: "",
@@ -488,47 +492,85 @@ export function BookingDialog(props: {
     return () => clearTimeout(t)
   }, [moreRooms, form.check_in_date, checkOut, form.rate_plan, form.company])
 
-  // walk-in: the actual rooms free tonight, clean ones first
+  // Dynamic room availability across all room types and rooms (Reservation & Walk-in)
   useEffect(() => {
-    if (!walkIn || !form.room_type || badDate) return
-    setFreeRooms(null)
+    if (!form.check_in_date || badDate) return
     let live = true
-    call<FreeRoom[]>("kamra.api.available_rooms", {
-      property: getCurrentProperty(),
-      room_type: form.room_type,
-      check_in_date: form.check_in_date,
-      check_out_date: checkOut,
-      // the guest takes the key now: a room whose guest has not checked
-      // out yet is not free, even on their departure day
-      ready_now: 1,
-    })
-      .then((rs) => {
-        if (!live) return
-        const rank = (r: FreeRoom) =>
-          r.housekeeping_status === "Clean" ||
-          r.housekeeping_status === "Inspected"
-            ? 0
-            : 1
-        const sorted = [...rs].sort(
-          (a, b) =>
-            rank(a) - rank(b) ||
-            a.room_number.localeCompare(b.room_number, undefined, {
-              numeric: true,
-            }),
-        )
-        setFreeRooms(sorted)
-        setWalk((w) => ({
-          ...w,
-          room: sorted.some((r) => r.name === w.room)
-            ? w.room
-            : (sorted[0]?.name ?? ""),
-        }))
+    setAvailLoading(true)
+
+    const timer = setTimeout(() => {
+      getBookingAvailability({
+        check_in_date: form.check_in_date,
+        check_out_date: checkOut,
+        room_type: form.room_type || undefined,
+        adults: form.adults,
+        children: form.children,
+        is_day_use: dayUse ? 1 : 0,
+        check_in_time: dayUse ? slot.from : undefined,
+        check_out_time: dayUse ? slot.to : undefined,
+        ready_now: walkIn ? 1 : 0,
       })
-      .catch(() => live && setFreeRooms([]))
+        .then((res) => {
+          if (!live) return
+          setAvailSummary(res.summary || [])
+          setAvailRooms(res.rooms || [])
+          setAvailLoading(false)
+
+          // Filter available rooms (clean first)
+          const cleanFirst = [...(res.rooms || [])].filter((r) => r.is_available)
+          const rank = (r: AvailableRoomItem) =>
+            r.housekeeping_status === "Clean" || r.housekeeping_status === "Inspected" ? 0 : 1
+          const sorted = cleanFirst.sort(
+            (a, b) =>
+              rank(a) - rank(b) ||
+              a.room_number.localeCompare(b.room_number, undefined, { numeric: true }),
+          )
+
+          // If the currently selected room is no longer available, warn and clear
+          const currentRoom = walkIn ? walk.room : form.room
+          if (currentRoom) {
+            const matched = res.rooms.find((r) => r.name === currentRoom)
+            if (matched && !matched.is_available) {
+              setAvailError(
+                translate(
+                  "This room is no longer available for the selected dates. Please select another room.",
+                ),
+              )
+              if (walkIn) {
+                setWalk((w) => ({ ...w, room: sorted[0]?.name ?? "" }))
+              } else {
+                setForm((f) => ({ ...f, room: "" }))
+              }
+            } else {
+              setAvailError(null)
+            }
+          } else if (walkIn && sorted.length > 0 && !walk.room) {
+            setWalk((w) => ({ ...w, room: sorted[0].name }))
+          }
+        })
+        .catch(() => {
+          if (!live) return
+          setAvailLoading(false)
+          setAvailRooms([])
+        })
+    }, 200)
+
     return () => {
       live = false
+      clearTimeout(timer)
     }
-  }, [walkIn, form.room_type, form.check_in_date, checkOut])
+  }, [
+    form.room_type,
+    form.check_in_date,
+    checkOut,
+    form.nights,
+    form.adults,
+    form.children,
+    dayUse,
+    slot.from,
+    slot.to,
+    walkIn,
+  ])
 
   function shortErr(e: unknown): string {
     const body = (e as { body?: string }).body
@@ -622,15 +664,28 @@ export function BookingDialog(props: {
         props.onBooked()
         return
       }
+      const selectedRoom = pinnedRoom ? props.initial.room : (form.room || undefined)
+      if (selectedRoom) {
+        const check = availRooms.find((r) => r.name === selectedRoom)
+        if (check && !check.is_available) {
+          setError(
+            translate(
+              "This room is no longer available for the selected dates. Please select another room.",
+            ),
+          )
+          setBusy(false)
+          return
+        }
+      }
       const res = await createBooking({
         over_capacity_reason: form.over_capacity_reason || undefined,
-          over_capacity_guests: form.over_capacity_guests || undefined,
-          over_capacity_charge: extraCharge || undefined,
+        over_capacity_guests: form.over_capacity_guests || undefined,
+        over_capacity_charge: extraCharge || undefined,
         guest_name: form.guest_name,
         phone: form.phone || undefined,
         guest: profile?.name,
         room_type: form.room_type,
-        room: pinnedRoom ? props.initial.room : undefined,
+        room: selectedRoom,
         check_in_date: form.check_in_date,
         check_out_date: checkOut,
         adults: form.adults,
@@ -709,6 +764,18 @@ export function BookingDialog(props: {
     setBusy(true)
     setError(null)
     try {
+      if (walk.room) {
+        const check = availRooms.find((r) => r.name === walk.room)
+        if (check && !check.is_available) {
+          setError(
+            translate(
+              "This room is no longer available for the selected dates. Please select another room.",
+            ),
+          )
+          setBusy(false)
+          return
+        }
+      }
       const amount = Number(walk.pay_amount) || 0
       if (amount > 0 && pinStatus?.required) await ensureUnlocked()
       const res = await call<WalkInResult>("kamra.api.walk_in", {
@@ -757,6 +824,23 @@ export function BookingDialog(props: {
     (rt) => rt.name === form.room_type,
   )
   const roomTypeName = selectedRt?.room_type_name ?? ""
+  const selectedSummary = availSummary.find((s) => s.room_type === form.room_type)
+  const roomPhotos: { url: string; caption?: string | null }[] = (() => {
+    if (selectedSummary?.media && selectedSummary.media.length > 0) {
+      return selectedSummary.media
+        .filter((m) => m.media_type === "Image" || !m.media_type)
+        .map((m) => ({ url: m.url, caption: m.caption }))
+    }
+    if (selectedRt?.media && selectedRt.media.length > 0) {
+      return selectedRt.media
+        .filter((m) => m.media_type === "Image" || !m.media_type)
+        .map((m) => ({ url: m.url, caption: m.caption }))
+    }
+    const single = selectedSummary?.image || selectedRt?.image
+    if (single) return [{ url: single, caption: selectedRt?.room_type_name }]
+    return []
+  })()
+  const activePhoto = roomPhotos[photoIndex] || roomPhotos[0] || null
   // Adults and Children stop at what the room sleeps; anyone above that is an
   // extra guest by arrangement, counted on its own up to the room type's
   // extra beds, at a price the desk agrees and a reason that records who did
@@ -1318,99 +1402,6 @@ export function BookingDialog(props: {
                   </div>
                 )}
 
-                <div className={walkIn ? "grid gap-3 sm:grid-cols-2" : ""}>
-                <Field label={t("Room type")}>
-                  <select
-                    className={inputCls}
-                    value={form.room_type}
-                    onChange={(e) => {
-                      // a smaller room type leaves a party it cannot sleep
-                      const rt = options?.room_types.find(
-                        (x) => x.name === e.target.value,
-                      )
-                      setForm((f) => ({
-                        ...f,
-                        room_type: e.target.value,
-                        adults: clampGuests(f.adults, 1, sleeps(rt, "adults")),
-                        children: clampGuests(
-                          f.children,
-                          0,
-                          sleeps(rt, "children"),
-                        ),
-                        over_capacity_guests: Math.min(
-                          f.over_capacity_guests,
-                          Number(rt?.max_extra_beds || 0),
-                        ),
-                      }))
-                    }}
-                  >
-                    {options?.room_types.map((rt) => (
-                      <option key={rt.name} value={rt.name}>
-                        {rt.room_type_name} · {t("BAR")} {cur()}
-                        {inr(rt.base_price)}/{t("night")}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedRt &&
-                    (selectedRt.adults_capacity > 0 ||
-                      selectedRt.children_capacity > 0) && (
-                      <p className="mt-1.5 text-xs text-zinc-400">
-                        {t("Sleeps up to {guests}", {
-                          guests: [
-                            selectedRt.adults_capacity > 0 &&
-                              tn(selectedRt.adults_capacity, "{n} adult", "{n} adults"),
-                            selectedRt.children_capacity > 0 &&
-                              tn(selectedRt.children_capacity, "{n} child", "{n} children"),
-                          ]
-                            .filter(Boolean)
-                            .join(" · "),
-                        })}
-                      </p>
-                    )}
-                </Field>
-                {walkIn && (
-                  <Field label={t("Room")}>
-                    <select
-                      className={inputCls}
-                      value={walk.room}
-                      disabled={!freeRooms?.length}
-                      onChange={(e) => setW("room", e.target.value)}
-                    >
-                      {freeRooms === null ? (
-                        <option value="">{t("Loading…")}</option>
-                      ) : freeRooms.length === 0 ? (
-                        <option value="">{t("No free room tonight")}</option>
-                      ) : (
-                        freeRooms.map((r) => (
-                          <option key={r.name} value={r.name}>
-                            {r.room_number}
-                            {r.housekeeping_status
-                              ? ` · ${t(r.housekeeping_status)}`
-                              : ""}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    {freeRooms?.length === 0 && (
-                      <p className="mt-1.5 text-xs text-rose-600">
-                        {t("This type is full tonight - try another room type.")}
-                      </p>
-                    )}
-                    {(() => {
-                      const r = freeRooms?.find((x) => x.name === walk.room)
-                      return r?.housekeeping_status &&
-                        !["Clean", "Inspected"].includes(r.housekeeping_status) ? (
-                        <p className="mt-1.5 text-xs text-amber-700">
-                          {t("{room} hasn't been cleaned yet - housekeeping will see the room flip to occupied.", {
-                            room: r.room_number,
-                          })}
-                        </p>
-                      ) : null
-                    })()}
-                  </Field>
-                )}
-                </div>
-
                 <div
                   role="radiogroup"
                   aria-label={t("Stay type")}
@@ -1553,6 +1544,563 @@ export function BookingDialog(props: {
                     )}
                   </div>
                 ) : null}
+
+                {/* Real-Time Room Availability Warning Banner */}
+                {availError && (
+                  <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-800 flex items-center gap-2">
+                    <ShieldAlert className="size-4 shrink-0 text-rose-600" />
+                    <span>{availError}</span>
+                  </div>
+                )}
+
+                {/* Compact Room Availability Summary */}
+                {availSummary.length > 0 && (
+                  <div className="rounded-xl border border-zinc-200 bg-white p-3.5 shadow-xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-brand-900">
+                          {t("Room Availability")}
+                        </span>
+                        {availLoading && (
+                          <Loader2 className="size-3.5 animate-spin text-brand-600" />
+                        )}
+                      </div>
+                      <span className="text-xs text-zinc-500">
+                        {dayUse
+                          ? t("Day Use ({from} - {to})", { from: slot.from, to: slot.to })
+                          : `${form.check_in_date} → ${checkOut} (${form.nights} ${form.nights === 1 ? t("night") : t("nights")})`}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-zinc-100 text-zinc-400 font-medium">
+                            <th className="pb-1.5 font-medium">{t("Room Type")}</th>
+                            <th className="pb-1.5 text-center font-medium">{t("Total")}</th>
+                            <th className="pb-1.5 text-center font-medium">{t("Available")}</th>
+                            <th className="pb-1.5 text-right font-medium">{t("Rate / Night")}</th>
+                            <th className="pb-1.5 text-right font-medium">{t("Action")}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-50">
+                          {availSummary.map((item) => {
+                            const isSelected = item.room_type === form.room_type
+                            const isFull = item.available <= 0
+                            return (
+                              <tr
+                                key={item.room_type}
+                                onClick={() => {
+                                  if (isSelected) return
+                                  setPhotoIndex(0)
+                                  const rt = options?.room_types.find((x) => x.name === item.room_type)
+                                  setForm((f) => ({
+                                    ...f,
+                                    room_type: item.room_type,
+                                    room: "",
+                                    adults: clampGuests(f.adults, 1, sleeps(rt, "adults")),
+                                    children: clampGuests(f.children, 0, sleeps(rt, "children")),
+                                    over_capacity_guests: Math.min(
+                                      f.over_capacity_guests,
+                                      Number(rt?.max_extra_beds || 0),
+                                    ),
+                                  }))
+                                  if (walkIn) {
+                                    setWalk((w) => ({ ...w, room: "" }))
+                                  }
+                                }}
+                                className={
+                                  "cursor-pointer transition-colors hover:bg-zinc-50 " +
+                                  (isSelected
+                                    ? "bg-amber-50/70 font-semibold text-brand-900"
+                                    : "text-zinc-700")
+                                }
+                              >
+                                <td className="py-2 pr-2">
+                                  <div className="flex items-center gap-2.5">
+                                    {item.image ? (
+                                      <img
+                                        src={item.image}
+                                        alt={item.room_type_name}
+                                        className="size-10 rounded-lg object-cover border border-zinc-200 shrink-0 shadow-2xs"
+                                        loading="lazy"
+                                      />
+                                    ) : (
+                                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-400">
+                                        <Camera className="size-4" />
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span
+                                          className={
+                                            "size-2 rounded-full shrink-0 " +
+                                            (isFull
+                                              ? "bg-rose-500"
+                                              : isSelected
+                                                ? "bg-brand-600"
+                                                : "bg-emerald-500")
+                                          }
+                                        />
+                                        <span className="truncate font-medium">{item.room_type_name}</span>
+                                      </div>
+                                      {(item.bed_type || item.room_view) && (
+                                        <p className="text-[10px] text-zinc-400 truncate pl-3.5">
+                                          {[item.bed_type && `${item.bed_type} Bed`, item.room_view && `${item.room_view} View`].filter(Boolean).join(" · ")}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-2 text-center text-zinc-500">{item.total}</td>
+                                <td className="py-2 text-center">
+                                  <span
+                                    className={
+                                      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold " +
+                                      (isFull
+                                        ? "bg-rose-100 text-rose-700"
+                                        : item.available <= 2
+                                          ? "bg-amber-100 text-amber-800"
+                                          : "bg-emerald-100 text-emerald-800")
+                                    }
+                                  >
+                                    {item.available} {t("available")}
+                                  </span>
+                                </td>
+                                <td className="py-2 text-right tabular-nums text-zinc-600">
+                                  {cur()}{inr(item.base_price)}
+                                </td>
+                                <td className="py-2 text-right">
+                                  <span
+                                    className={
+                                      "inline-block rounded px-2 py-0.5 text-[11px] font-medium " +
+                                      (isSelected
+                                        ? "bg-brand-800 text-white"
+                                        : "text-brand-700 hover:bg-zinc-200")
+                                    }
+                                  >
+                                    {isSelected ? t("Selected") : t("Select")}
+                                  </span>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label={t("Room type")}>
+                    <select
+                      className={inputCls}
+                      value={form.room_type}
+                      onChange={(e) => {
+                        // a smaller room type leaves a party it cannot sleep
+                        setPhotoIndex(0)
+                        const rt = options?.room_types.find(
+                          (x) => x.name === e.target.value,
+                        )
+                        setForm((f) => ({
+                          ...f,
+                          room_type: e.target.value,
+                          room: "",
+                          adults: clampGuests(f.adults, 1, sleeps(rt, "adults")),
+                          children: clampGuests(
+                            f.children,
+                            0,
+                            sleeps(rt, "children"),
+                          ),
+                          over_capacity_guests: Math.min(
+                            f.over_capacity_guests,
+                            Number(rt?.max_extra_beds || 0),
+                          ),
+                        }))
+                        if (walkIn) {
+                          setWalk((w) => ({ ...w, room: "" }))
+                        }
+                      }}
+                    >
+                      {options?.room_types.map((rt) => {
+                        const summ = availSummary.find((s) => s.room_type === rt.name)
+                        const countLabel = summ ? ` (${summ.available} available)` : ""
+                        return (
+                          <option key={rt.name} value={rt.name}>
+                            {rt.room_type_name}{countLabel} · {t("BAR")} {cur()}
+                            {inr(rt.base_price)}/{t("night")}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    {selectedRt &&
+                      (selectedRt.adults_capacity > 0 ||
+                        selectedRt.children_capacity > 0) && (
+                        <p className="mt-1.5 text-xs text-zinc-400">
+                          {t("Sleeps up to {guests}", {
+                            guests: [
+                              selectedRt.adults_capacity > 0 &&
+                                tn(selectedRt.adults_capacity, "{n} adult", "{n} adults"),
+                              selectedRt.children_capacity > 0 &&
+                                tn(selectedRt.children_capacity, "{n} child", "{n} children"),
+                            ]
+                              .filter(Boolean)
+                              .join(" · "),
+                          })}
+                        </p>
+                      )}
+                  </Field>
+
+                  <Field
+                    label={
+                      walkIn
+                        ? t("Assigned Room (Required)")
+                        : t("Room Selection (Optional)")
+                    }
+                  >
+                    <select
+                      className={inputCls}
+                      value={walkIn ? walk.room : (pinnedRoom ? (props.initial.room ?? "") : form.room)}
+                      disabled={pinnedRoom}
+                      onChange={(e) => {
+                        if (walkIn) {
+                          setW("room", e.target.value)
+                        } else {
+                          set("room", e.target.value)
+                        }
+                      }}
+                    >
+                      {pinnedRoom ? (
+                        <option value={props.initial.room}>
+                          {availRooms.find((r) => r.name === props.initial.room)?.room_number ||
+                            props.initial.room}{" "}
+                          · {t("Assigned from Tape Chart")}
+                        </option>
+                      ) : (
+                        <>
+                          <option value="">
+                            {walkIn
+                              ? t("Select an available room…")
+                              : t("Auto-assign on arrival (or select below)")}
+                          </option>
+                          {availRooms.map((r) => (
+                            <option
+                              key={r.name}
+                              value={r.name}
+                              disabled={!r.is_available}
+                            >
+                              {r.room_number} – {t(r.status)}
+                              {r.is_available
+                                ? ` · ${t(r.housekeeping_status)}`
+                                : r.conflict_reason
+                                  ? ` · ${r.conflict_reason}`
+                                  : ""}
+                            </option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                    {availRooms.length === 0 && !availLoading && (
+                      <p className="mt-1.5 text-xs text-rose-600">
+                        {t("No rooms configured for this room type.")}
+                      </p>
+                    )}
+                    {availRooms.length > 0 &&
+                      availRooms.filter((r) => r.is_available).length === 0 &&
+                      !availLoading && (
+                        <p className="mt-1.5 text-xs text-rose-600">
+                          {t("All rooms of this type are booked or unavailable for selected dates.")}
+                        </p>
+                      )}
+                    {(() => {
+                      const selectedRoomName = walkIn ? walk.room : (pinnedRoom ? props.initial.room : form.room)
+                      const r = availRooms.find((x) => x.name === selectedRoomName)
+                      return r?.housekeeping_status &&
+                        !["Clean", "Inspected"].includes(r.housekeeping_status) ? (
+                        <p className="mt-1.5 text-xs text-amber-700">
+                          {t("{room} hasn't been cleaned yet - housekeeping will see the room flip to occupied.", {
+                            room: r.room_number,
+                          })}
+                        </p>
+                      ) : null
+                    })()}
+                  </Field>
+                </div>
+
+                {/* Interactive Room Photo Showcase */}
+                {activePhoto && (
+                  <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xs">
+                    <div className="relative aspect-video max-h-56 w-full overflow-hidden bg-zinc-900 group">
+                      <img
+                        src={activePhoto.url}
+                        alt={activePhoto.caption || roomTypeName}
+                        className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02] cursor-pointer"
+                        onClick={() => setLightboxOpen(true)}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent pointer-events-none" />
+
+                      {/* Top Left Badges */}
+                      <div className="absolute top-2.5 left-2.5 flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-full bg-black/60 backdrop-blur-xs px-2.5 py-1 text-xs font-semibold text-white shadow-xs">
+                          {roomTypeName}
+                        </span>
+                        {selectedRt?.room_category && (
+                          <span className="rounded-full bg-white/80 backdrop-blur-xs px-2 py-0.5 text-[11px] font-medium text-zinc-800">
+                            {selectedRt.room_category}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Top Right Controls */}
+                      <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setLightboxOpen(true)}
+                          className="flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-xs px-2.5 py-1 text-[11px] font-medium text-white hover:bg-black/80 transition"
+                          title={t("View full photo")}
+                        >
+                          <Eye className="size-3.5" />
+                          <span>{t("Enlarge")}</span>
+                        </button>
+                        {roomPhotos.length > 1 && (
+                          <span className="rounded-full bg-black/60 backdrop-blur-xs px-2 py-1 text-[11px] font-medium text-white">
+                            {photoIndex + 1} / {roomPhotos.length}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Carousel Navigation Arrows */}
+                      {roomPhotos.length > 1 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setPhotoIndex((i) => (i > 0 ? i - 1 : roomPhotos.length - 1))
+                            }}
+                            aria-label={t("Previous photo")}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white backdrop-blur-xs hover:bg-black/75 transition"
+                          >
+                            <ChevronLeft className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setPhotoIndex((i) => (i < roomPhotos.length - 1 ? i + 1 : 0))
+                            }}
+                            aria-label={t("Next photo")}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white backdrop-blur-xs hover:bg-black/75 transition"
+                          >
+                            <ChevronRight className="size-4" />
+                          </button>
+                        </>
+                      )}
+
+                      {/* Bottom Room Details Banner */}
+                      <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-end justify-between gap-2 text-white">
+                        <div className="min-w-0">
+                          {activePhoto.caption && (
+                            <p className="text-xs font-medium text-white drop-shadow-xs truncate">
+                              {translate(activePhoto.caption)}
+                            </p>
+                          )}
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-zinc-200">
+                            {selectedSummary?.bed_type && (
+                              <span className="rounded bg-white/20 backdrop-blur-xs px-1.5 py-0.5">
+                                {selectedSummary.bed_type} {t("Bed")}
+                              </span>
+                            )}
+                            {selectedSummary?.room_view && (
+                              <span className="rounded bg-white/20 backdrop-blur-xs px-1.5 py-0.5">
+                                {selectedSummary.room_view} {t("View")}
+                              </span>
+                            )}
+                            {selectedRt?.adults_capacity && (
+                              <span className="rounded bg-white/20 backdrop-blur-xs px-1.5 py-0.5">
+                                {t("Up to {a} adults", { a: selectedRt.adults_capacity })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Assigned room pill */}
+                        {(() => {
+                          const selectedRoomName = walkIn ? walk.room : (pinnedRoom ? props.initial.room : form.room)
+                          const curRoom = availRooms.find((r) => r.name === selectedRoomName)
+                          if (!curRoom) return null
+                          return (
+                            <span className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-bold text-white shadow-md shrink-0">
+                              {t("Room {num}", { num: curRoom.room_number })}
+                            </span>
+                          )
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Thumbnail strip if multiple photos */}
+                    {roomPhotos.length > 1 && (
+                      <div className="flex items-center gap-2 p-2 bg-zinc-50 border-t border-zinc-100 overflow-x-auto">
+                        {roomPhotos.map((p, idx) => (
+                          <button
+                            key={p.url + idx}
+                            type="button"
+                            onClick={() => setPhotoIndex(idx)}
+                            className={
+                              "relative size-12 shrink-0 overflow-hidden rounded-md border-2 transition " +
+                              (idx === photoIndex
+                                ? "border-brand-600 ring-2 ring-brand-400"
+                                : "border-transparent opacity-60 hover:opacity-100")
+                            }
+                          >
+                            <img src={p.url} alt="" className="size-full object-cover" />
+                          </button>
+                        ))}
+                        {selectedSummary?.description && (
+                          <p className="text-xs text-zinc-500 line-clamp-1 italic pl-1 flex-1">
+                            "{selectedSummary.description}"
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Dynamic Visual Room-Selection Panel */}
+                {availRooms.length > 0 && (
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-3.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-zinc-700">
+                          {t("Room Selection Panel")} ({selectedRt?.room_type_name || t("Rooms")})
+                        </span>
+                        <span className="text-[11px] text-zinc-500">
+                          {availRooms.filter((r) => r.is_available).length} {t("of")}{" "}
+                          {availRooms.length} {t("available")}
+                        </span>
+                      </div>
+
+                      {/* Status Indicators Legend */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-600">
+                        <span className="flex items-center gap-1">
+                          <span className="size-2 rounded-full bg-emerald-500" />
+                          {t("Available")}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="size-2 rounded-full bg-rose-500" />
+                          {t("Occupied")}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="size-2 rounded-full bg-amber-500" />
+                          {t("Maintenance")}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="size-2 rounded-full bg-zinc-400" />
+                          {t("Out of Service")}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="size-2 rounded-full bg-blue-600" />
+                          {t("Selected")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Room Cards Grid */}
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                      {availRooms.map((r) => {
+                        const isSelected =
+                          (walkIn ? walk.room : (pinnedRoom ? props.initial.room : form.room)) === r.name
+
+                        let cardStyle = ""
+                        let statusBadge = ""
+
+                        if (isSelected) {
+                          cardStyle =
+                            "border-blue-600 bg-blue-50/80 text-blue-900 ring-2 ring-blue-500 shadow-xs"
+                          statusBadge = "bg-blue-600 text-white"
+                        } else if (r.is_available) {
+                          cardStyle =
+                            "border-emerald-300 bg-white hover:bg-emerald-50/60 hover:border-emerald-500 text-zinc-900 cursor-pointer shadow-2xs"
+                          statusBadge = "bg-emerald-100 text-emerald-800"
+                        } else if (r.status === "Occupied") {
+                          cardStyle =
+                            "border-rose-200 bg-rose-50/50 text-rose-800 cursor-not-allowed opacity-80"
+                          statusBadge = "bg-rose-100 text-rose-800"
+                        } else if (r.status === "Maintenance") {
+                          cardStyle =
+                            "border-amber-300 bg-amber-50/50 text-amber-800 cursor-not-allowed opacity-80"
+                          statusBadge = "bg-amber-100 text-amber-800"
+                        } else {
+                          // Out of Service
+                          cardStyle =
+                            "border-zinc-200 bg-zinc-100 text-zinc-500 cursor-not-allowed opacity-60"
+                          statusBadge = "bg-zinc-200 text-zinc-700"
+                        }
+
+                        return (
+                          <button
+                            key={r.name}
+                            type="button"
+                            disabled={!r.is_available && !isSelected}
+                            title={
+                              !r.is_available
+                                ? r.conflict_reason || t("Room not available for selected dates")
+                                : t("Click to select Room {room}", { room: r.room_number })
+                            }
+                            onClick={() => {
+                              if (!r.is_available) return
+                              if (pinnedRoom) return
+                              if (walkIn) {
+                                setW("room", r.name)
+                              } else {
+                                set("room", form.room === r.name ? "" : r.name)
+                              }
+                            }}
+                            className={
+                              "relative flex flex-col items-center justify-between rounded-lg border p-2 text-left transition-all " +
+                              cardStyle
+                            }
+                          >
+                            <div className="flex w-full items-center justify-between">
+                              <span className="text-sm font-bold tracking-tight">
+                                {r.room_number}
+                              </span>
+                              <span
+                                className={
+                                  "size-2 rounded-full " +
+                                  (isSelected
+                                    ? "bg-blue-600"
+                                    : r.is_available
+                                      ? "bg-emerald-500"
+                                      : r.status === "Occupied"
+                                        ? "bg-rose-500"
+                                        : r.status === "Maintenance"
+                                          ? "bg-amber-500"
+                                          : "bg-zinc-400")
+                                }
+                              />
+                            </div>
+                            <div className="mt-1 flex w-full items-center justify-between gap-1 text-[10px]">
+                              <span className={"rounded px-1 py-0.5 font-medium " + statusBadge}>
+                                {isSelected ? t("Selected") : t(r.status)}
+                              </span>
+                              {r.is_available && r.housekeeping_status && (
+                                <span className="text-zinc-400 truncate max-w-[55px]">
+                                  {t(r.housekeeping_status)}
+                                </span>
+                              )}
+                            </div>
+                            {!r.is_available && r.conflict_reason && (
+                              <span className="mt-1 block w-full truncate text-[9px] text-zinc-500 text-center">
+                                {r.conflict_reason.split("(")[0]}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {selectedRt && extraBeds > 0 && (
                   <div
@@ -2300,6 +2848,27 @@ export function BookingDialog(props: {
                   )}
                 </div>
 
+                {/* Room Photo in Quote rail */}
+                {activePhoto && (
+                  <div className="mb-4 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xs">
+                    <div className="relative h-28 w-full overflow-hidden bg-zinc-900 group">
+                      <img
+                        src={activePhoto.url}
+                        alt={roomTypeName}
+                        className="size-full object-cover transition duration-300 group-hover:scale-105 cursor-pointer"
+                        onClick={() => setLightboxOpen(true)}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent pointer-events-none" />
+                      <div className="absolute bottom-2 left-2.5 right-2.5 text-white">
+                        <p className="text-xs font-bold truncate drop-shadow-xs">{roomTypeName}</p>
+                        <p className="text-[10px] text-zinc-200">
+                          {[selectedSummary?.bed_type && `${selectedSummary.bed_type} Bed`, selectedSummary?.room_view && `${selectedSummary.room_view} View`].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {quote ? (
                   <div className="space-y-2.5 text-[15px]">
                     <div className="flex justify-between gap-3 text-zinc-600">
@@ -2522,6 +3091,68 @@ export function BookingDialog(props: {
           </div>
         )}
       </div>
+      {lightboxOpen && activePhoto && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-xs"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-4xl overflow-hidden rounded-2xl bg-zinc-900 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative flex items-center justify-center bg-black">
+              <img
+                src={activePhoto.url}
+                alt={roomTypeName}
+                className="max-h-[75vh] w-auto max-w-full object-contain"
+              />
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(false)}
+                className="absolute right-3 top-3 rounded-full bg-black/60 p-2 text-white hover:bg-black/90 transition"
+                aria-label={t("Close")}
+              >
+                <X className="size-5" />
+              </button>
+              {roomPhotos.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoIndex((i) => (i > 0 ? i - 1 : roomPhotos.length - 1))}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/90 transition"
+                    aria-label={t("Previous photo")}
+                  >
+                    <ChevronLeft className="size-6" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoIndex((i) => (i < roomPhotos.length - 1 ? i + 1 : 0))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/90 transition"
+                    aria-label={t("Next photo")}
+                  >
+                    <ChevronRight className="size-6" />
+                  </button>
+                </>
+              )}
+            </div>
+            <div className="flex items-center justify-between bg-zinc-950 px-4 py-3 text-white">
+              <div>
+                <h4 className="font-semibold text-sm">{roomTypeName}</h4>
+                {activePhoto.caption && (
+                  <p className="text-xs text-zinc-400">{translate(activePhoto.caption)}</p>
+                )}
+              </div>
+              {roomPhotos.length > 1 && (
+                <span className="text-xs text-zinc-400 font-medium">
+                  {photoIndex + 1} / {roomPhotos.length}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {guidedCheckIn && (
         <CheckInDialog
           reservation={guidedCheckIn}

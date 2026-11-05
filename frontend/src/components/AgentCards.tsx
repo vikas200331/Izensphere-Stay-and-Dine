@@ -12,7 +12,7 @@ import CheckInDialog from "./CheckInDialog"
 import CheckOutDialog from "./CheckOutDialog"
 import type { ShellContext } from "../AppShell"
 
-/** What a Kamra Agent turn hands the chat (kamra.assistant._turn_cards). */
+/** What a Izensphere AI turn hands the chat (kamra.assistant._turn_cards). */
 export type AgentCard =
   | { type: "stay"; reservation: string }
   | {
@@ -49,7 +49,7 @@ const STATUS_TONE: Record<string, "green" | "sky" | "zinc" | "amber" | "rose"> =
 }
 
 /** A stay the agent touched, with the desk's own actions on it. Every button
- *  opens the same sheet or endpoint the rest of Kamra uses, as this user. */
+ *  opens the same sheet or endpoint the rest of Izensphere Stay and Dine uses, as this user. */
 function StayCard({ reservation }: { reservation: string }) {
   const { t } = useT()
   const navigate = useNavigate()

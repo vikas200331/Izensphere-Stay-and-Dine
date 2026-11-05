@@ -44,7 +44,7 @@ async function doFetch(path: string, init?: RequestInit) {
       console.warn(`[kamra] network failure calling ${path}`, err)
       window.dispatchEvent(new Event("kamra:offline"))
       throw Object.assign(
-        new Error("Can't reach Kamra right now. Check your connection - we'll reconnect automatically."),
+        new Error("Can't reach Izensphere Stay and Dine right now. Check your connection - we'll reconnect automatically."),
         { network: true },
       )
     }
@@ -156,7 +156,7 @@ export async function uploadFile(
 /** Upload a file to a custom Kamra endpoint (multipart), returning its result.
  *  Unlike uploadFile (Frappe's built-in upload_file, which authorises against
  *  the target doctype's own perms), this posts to a @require_roles endpoint that
- *  handles the File itself - the pattern the rest of Kamra uses. */
+ *  handles the File itself - the pattern the rest of Izensphere Stay and Dine uses. */
 export async function uploadTo(
   method: string,
   file: File,
@@ -245,7 +245,7 @@ export interface WhoAmI {
 
 export const whoami = () => call<WhoAmI>("kamra.api.whoami")
 
-/** Which parts of Kamra this property runs. Empty on the server means
+/** Which parts of Izensphere Stay and Dine this property runs. Empty on the server means
  *  "all of them", so an existing property is untouched. */
 export const enabledModules = () =>
   call<string[]>("kamra.api.enabled_modules", {
@@ -320,10 +320,17 @@ export interface BookingOptions {
   room_types: {
     name: string
     room_type_name: string
+    room_type_code?: string
+    room_category?: string | null
     base_price: number
     adults_capacity: number
     children_capacity: number
     max_extra_beds?: number
+    image?: string | null
+    description?: string | null
+    bed_type?: string | null
+    room_view?: string | null
+    media?: { media_type: string; url: string; caption?: string | null }[]
   }[]
   meal_plans: {
     name: string
@@ -403,9 +410,9 @@ export interface CancellationOutlook {
   non_refundable_season: string | null
 }
 
-export const DEMO_PROPERTY = "Kamra Demo Palace"
+export const DEMO_PROPERTY = "Izensphere Stay and Dine"
 
-// Every Kamra site hosts exactly one Property. The public booking engine
+// Every Izensphere Stay and Dine site hosts exactly one Property. The public booking engine
 // (/book) has no logged-in session to read a chosen property from, so it
 // asks the site which one to show instead of assuming the demo property.
 export const getDefaultProperty = () =>
@@ -449,6 +456,64 @@ export const getCalendar = (days = 14, startDate?: string) =>
 export const getBookingOptions = () =>
   call<BookingOptions>("kamra.api.booking_options", {
     property: getCurrentProperty(),
+  })
+
+export interface RoomAvailabilitySummaryItem {
+  room_type: string
+  room_type_name: string
+  room_type_code?: string
+  total: number
+  available: number
+  booked: number
+  maintenance: number
+  out_of_service: number
+  base_price: number
+  adults_capacity: number
+  children_capacity: number
+  max_extra_beds: number
+  image?: string | null
+  description?: string | null
+  bed_type?: string | null
+  room_view?: string | null
+  media?: { media_type: string; url: string; caption?: string | null }[]
+}
+
+export interface AvailableRoomItem {
+  name: string
+  room_number: string
+  room_type: string
+  floor?: string
+  housekeeping_status: string
+  status: "Available" | "Occupied" | "Maintenance" | "Out of Service"
+  is_available: boolean
+  conflict_reason?: string | null
+  guest_name?: string | null
+}
+
+export interface BookingAvailabilityResult {
+  property: string
+  check_in_date: string
+  check_out_date: string
+  is_day_use: number
+  summary: RoomAvailabilitySummaryItem[]
+  rooms: AvailableRoomItem[]
+}
+
+export const getBookingAvailability = (params: {
+  property?: string
+  check_in_date: string
+  check_out_date: string
+  room_type?: string
+  adults?: number
+  children?: number
+  is_day_use?: number
+  check_in_time?: string
+  check_out_time?: string
+  ready_now?: number
+}) =>
+  call<BookingAvailabilityResult>("kamra.api.get_booking_availability", {
+    property: params.property || getCurrentProperty(),
+    ...params,
   })
 
 export interface QuoteParams {

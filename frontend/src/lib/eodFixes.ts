@@ -1,6 +1,6 @@
 /** How to clear each End of Day (night audit) check. Shown under a check
  *  that has something to fix: the usual ways to fix it, a hand-off to the
- *  Kamra Agent, and what overriding it means. The override itself is the
+ *  Izensphere AI, and what overriding it means. The override itself is the
  *  existing acknowledge-with-a-reason; this only says what it implies. */
 
 export interface FixStep {
@@ -16,7 +16,7 @@ export interface CheckFix {
   steps: FixStep[]
   /** what overriding with a reason lets through */
   override: string
-  /** what to ask the Kamra Agent, given the check's count */
+  /** what to ask the Izensphere AI, given the check's count */
   ask: (count: number, date: string) => string
 }
 

@@ -47,49 +47,76 @@ def assert_property_access(property: str):
 def crs_search(check_in_date: str, check_out_date: str,
                adults: int = 2, children: int = 0):
 	"""Find a room across the chain: for every property the user can access,
-	the room types with space for these dates and their all-in rate."""
-	from kamra.api import available_rooms
+	the room types with space for these dates, room photos, available room numbers,
+	and their all-in rate."""
+	from kamra.api import get_booking_availability
 	from kamra.pricing import quote
 
 	nights = max(1, date_diff(check_out_date, check_in_date))
 	results = []
 	for prop in sorted(permitted_properties()):
-		rts = frappe.get_all(
-			"Room Type",
-			filters={"property": prop, "disabled": 0},
-			fields=["name", "room_type_name", "base_price",
-			        "adults_capacity", "children_capacity"],
-			order_by="base_price asc")
+		try:
+			avail_data = get_booking_availability(
+				property=prop,
+				check_in_date=check_in_date,
+				check_out_date=check_out_date,
+				adults=int(adults),
+				children=int(children),
+			)
+		except Exception:
+			continue
+
 		room_types = []
-		for rt in rts:
+		for s in avail_data.get("summary", []):
 			# capacity gate: skip a type that can't sleep the party
-			if rt.adults_capacity and int(adults) > rt.adults_capacity:
+			cap = s.get("adults_capacity") or 2
+			if cap and int(adults) > cap:
 				continue
-			free = available_rooms(prop, rt.name, check_in_date, check_out_date)
-			if not free:
+
+			avail_count = s.get("available", 0)
+			if avail_count <= 0:
 				continue
+
+			rt_id = s["room_type"]
 			try:
-				q = quote(prop, rt.name, check_in_date, check_out_date,
+				q = quote(prop, rt_id, check_in_date, check_out_date,
 				          int(adults), int(children))
 			except Exception:
 				continue
+
 			total = q.get("amount_after_tax", 0)
+			rt_rooms = [r for r in avail_data.get("rooms", []) if r.get("room_type") == rt_id]
+			free_rooms = [r for r in rt_rooms if r.get("is_available")]
+
 			room_types.append({
-				"room_type": rt.name,
-				"room_type_name": rt.room_type_name,
-				"available": len(free),
-				"adults_capacity": rt.adults_capacity,
-				"children_capacity": rt.children_capacity,
+				"room_type": rt_id,
+				"room_type_name": s["room_type_name"],
+				"room_type_code": s.get("room_type_code", ""),
+				"available": avail_count,
+				"total_rooms": s.get("total", len(rt_rooms)),
+				"booked": s.get("booked", 0),
+				"maintenance": s.get("maintenance", 0),
+				"out_of_service": s.get("out_of_service", 0),
+				"adults_capacity": cap,
+				"children_capacity": s.get("children_capacity", 0),
+				"image": s.get("image"),
+				"media": s.get("media", []),
+				"bed_type": s.get("bed_type", ""),
+				"room_view": s.get("room_view", ""),
+				"description": s.get("description", ""),
 				"total": round(total, 0),
 				"per_night": round(total / nights, 0) if nights else total,
+				"rooms": rt_rooms,
+				"free_rooms": free_rooms,
 			})
+
 		if room_types:
 			p = frappe.db.get_value(
 				"Property", prop, ["property_name", "city"], as_dict=True)
 			results.append({
 				"property": prop,
-				"property_name": p.property_name,
-				"city": p.city,
+				"property_name": p.property_name if p else prop,
+				"city": p.city if p else "",
 				"available_rooms": sum(r["available"] for r in room_types),
 				"from_rate": min(r["per_night"] for r in room_types),
 				"room_types": room_types,

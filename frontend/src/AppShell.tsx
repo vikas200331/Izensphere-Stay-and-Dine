@@ -77,7 +77,7 @@ export interface ShellContext {
 // mirrors @require_roles on kamra.api.create_booking / walk_in (admins always pass)
 const BOOKING_ROLES = [
   "Front Desk",
-  "Kamra Agent",
+  "Izensphere AI",
   "Hotel Admin",
   "System Manager",
   "Administrator",
@@ -219,14 +219,16 @@ export default function AppShell() {
   const [property, setProperty] = useState(getCurrentProperty())
   const [demoMode, setDemoMode] = useState(false)
   const [build, setBuild] = useState<string | null>(null)
-  // co-branding: the hotel's name and logo on top, Kamra PMS kept beneath
+  // co-branding: the hotel's name and logo on top, Izensphere Stay and Dine kept beneath
   const [brand, setBrand] = useState<{ name: string | null; logo: string | null }>({ name: null, logo: null })
 
   useEffect(() => {
     getSiteInfo().then((info) => {
       setBuild(versionLabel(info))
-      setBrand({ name: info.brand_name ?? null, logo: info.brand_logo ?? null })
-      document.title = info.brand_name ? `${info.brand_name} · Kamra PMS` : "Kamra PMS"
+      setBrand({ name: info.brand_name ?? "Izensphere Stay and Dine", logo: info.brand_logo ?? asset("izensphere-stay-and-dine-logo.svg") })
+      document.title = info.brand_name
+        ? `${info.brand_name} · A World of Flavours`
+        : "Izensphere Stay and Dine · A World of Flavours"
     })
   }, [])
 
@@ -386,14 +388,7 @@ export default function AppShell() {
       <NotificationHost />
       {demoMode && !kiosk && (
         <div className="bg-amber-500 px-4 py-1.5 text-center text-xs font-medium text-amber-950">
-          {t("Shared playground, not your hotel. Data is wiped every night.")}
-          {" "}
-          <a
-            href="https://kamrapms.com"
-            className="underline underline-offset-2 hover:text-black"
-          >
-            {t("Get your own Kamra →")}
-          </a>
+          {t("Izensphere Stay and Dine Demo Environment · A World of Flavours")}
         </div>
       )}
       {!kiosk && !demoMode && <UpdateNag />}
@@ -405,22 +400,17 @@ export default function AppShell() {
           to="/"
           end
           aria-label={t("Home")}
-          className="mb-5 flex items-center gap-2 rounded-lg px-1 outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+          className="mb-5 flex items-center gap-2.5 rounded-lg px-1 outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
         >
-          <img src={brand.logo || asset("kamra-mark.svg")} alt="" className="size-7 object-contain" aria-hidden />
-          {brand.name ? (
-            <span className="min-w-0 leading-tight">
-              <span className="block truncate text-sm font-semibold text-zinc-900">{brand.name}</span>
-              <span className="block text-[10px] font-semibold tracking-[0.2em] text-brand-600">KAMRA PMS</span>
+          <img src={brand.logo || asset("izensphere-stay-and-dine-mark.svg")} alt="Izensphere Stay and Dine" className="size-8 object-contain" aria-hidden />
+          <span className="min-w-0 leading-tight">
+            <span className="block truncate text-sm font-bold text-[#142B49]">
+              {brand.name && brand.name !== "POS Restaurant" ? brand.name : "Izensphere Stay and Dine"}
             </span>
-          ) : (
-            <span className="text-lg font-semibold tracking-tight text-zinc-900">
-              kamra
-              <span className="ml-1 align-middle text-[10px] font-semibold tracking-[0.2em] text-brand-600">
-                PMS
-              </span>
+            <span className="block text-[9px] font-bold tracking-[0.2em] text-[#C49A45] uppercase">
+              A World of Flavours
             </span>
-          )}
+          </span>
         </NavLink>
 
         {currentApp && (
@@ -469,9 +459,9 @@ export default function AppShell() {
         {build ? (
           <p
             className="px-2.5 pt-2 text-[11px] text-zinc-400"
-            title={t("The Kamra version this site is running")}
+            title={t("The Izensphere Stay and Dine version this site is running")}
           >
-            Kamra v{build}
+            Izensphere Stay and Dine v{build}
           </p>
         ) : null}
       </aside>

@@ -401,16 +401,16 @@ export function KamraVerifyCard() {
     <Card>
       <CardHeader>
         <div>
-          <CardTitle>{t("Kamra Verify")}</CardTitle>
+          <CardTitle>{t("Izensphere Verify")}</CardTitle>
           <p className="mt-1 text-sm text-zinc-500">
-            {t("Check a company's GSTIN and read a guest's Aadhaar, passport or licence into the profile. Charged per check to your Kamra Connect wallet.")}
+            {t("Check a company's GSTIN and read a guest's Aadhaar, passport or licence into the profile. Charged per check to your Izensphere Connect wallet.")}
           </p>
         </div>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {linked ? (
           <div className="flex items-center gap-3">
-            <span className="text-emerald-700">{t("Linked to Kamra Connect.")}</span>
+            <span className="text-emerald-700">{t("Linked to Izensphere Connect.")}</span>
             <Button variant="ghost" disabled={busy} onClick={() => run("unlink")}>{t("Unlink")}</Button>
           </div>
         ) : (
@@ -605,7 +605,7 @@ function AiAssistantCard({
           <CardTitle>{t("AI assistant (bring your own key)")}</CardTitle>
           <p className="mt-0.5 text-xs text-zinc-400">
             {t(
-              "Kamra Agent for staff. Pick a provider, paste the key, Test. Claude Desktop is MCP (Kamra Agent → Connect your AI) - not an Anthropic key in this form.",
+              "Izensphere AI for staff. Pick a provider, paste the key, Test. Claude Desktop is MCP (Izensphere AI → Connect your AI) - not an Anthropic key in this form.",
             )}
           </p>
         </div>
@@ -716,7 +716,7 @@ function AiAssistantCard({
             {t("Never send guest contact details to the AI provider")}
             <span className="mt-0.5 block text-xs font-normal text-zinc-400">
               {t(
-                "When off, phone and ID numbers in tool results are shortened to the last four digits before they leave Kamra.",
+                "When off, phone and ID numbers in tool results are shortened to the last four digits before they leave Izensphere Stay and Dine.",
               )}
             </span>
           </span>
@@ -749,7 +749,7 @@ function AiAssistantCard({
         <p className="text-xs text-zinc-400">
           {t("Want Claude the app?")}{" "}
           <a href="/kamra/assistant" className="font-medium text-brand-700 hover:underline">
-            {t("Kamra Agent → Connect your AI")}
+            {t("Izensphere AI → Connect your AI")}
           </a>
           . {t("Want Claude the model in this chat? Use the OpenRouter preset.")}
         </p>
@@ -846,7 +846,7 @@ export function AgentAccessCard() {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <p className="text-zinc-600">
-          <Link to="/assistant" className="font-medium text-brand-700 hover:underline">{translateUI("Kamra Agent → AI Provider")}</Link>{": "}{translateUI("Use the MCP URL to connect ChatGPT, Claude or another compatible provider. Each person signs in as themselves with OAuth.")}</p>
+          <Link to="/assistant" className="font-medium text-brand-700 hover:underline">{translateUI("Izensphere AI → AI Provider")}</Link>{": "}{translateUI("Use the MCP URL to connect ChatGPT, Claude or another compatible provider. Each person signs in as themselves with OAuth.")}</p>
         <pre className="overflow-x-auto rounded-lg bg-zinc-100 p-3 text-xs leading-relaxed text-zinc-700">
           {`claude mcp add --transport http kamra ${window.location.origin}/mcp`}
         </pre>
@@ -1119,7 +1119,7 @@ export function HurdleRatesCard({ property }: { property: string }) {
       <CardHeader>
         <div>
           <CardTitle>{translateUI("Demand pricing (hurdle rates)")}</CardTitle>
-          <p className="mt-0.5 text-xs text-zinc-400">{translateUI("When forecast occupancy for a date crosses a threshold, quotes carry the premium automatically and no rate may sell below the hurdle. A room-type tier beats the all-types tier. Guardrails (floor and ceiling) only bound rates set through set_room_rate - Kamra Agent, MCP or the API - not these premiums, staff seasons or quotes.")}</p>
+          <p className="mt-0.5 text-xs text-zinc-400">{translateUI("When forecast occupancy for a date crosses a threshold, quotes carry the premium automatically and no rate may sell below the hurdle. A room-type tier beats the all-types tier. Guardrails (floor and ceiling) only bound rates set through set_room_rate - Izensphere AI, MCP or the API - not these premiums, staff seasons or quotes.")}</p>
         </div>
         <Button variant="outline" className="shrink-0" onClick={() => setForm({ from: "", premium: "", min: "", room_type: "" })}>{translateUI("Add tier")}</Button>
       </CardHeader>

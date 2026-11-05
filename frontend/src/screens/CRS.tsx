@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { Search, BedDouble, MapPin, Loader2, Plus, X, Printer, ExternalLink } from "lucide-react"
+import { Search, BedDouble, MapPin, Loader2, Plus, X, Printer, ExternalLink, Camera, ChevronDown, ChevronUp, Check } from "lucide-react"
 import { call, newIdempotencyKey, setCurrentProperty } from "../lib/api"
 import { toFullPath } from "../lib/routing"
 import { Badge } from "../components/ui/badge"
@@ -21,13 +21,37 @@ const inputCls =
   "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm " +
   "focus:outline-2 focus:outline-offset-1 focus:outline-brand-600"
 
+export interface RoomItem {
+  name: string
+  room_number: string
+  floor?: string
+  housekeeping_status: string
+  status: "Available" | "Occupied" | "Maintenance" | "Out of Service"
+  is_available: boolean
+  conflict_reason?: string | null
+  guest_name?: string | null
+}
+
 interface RoomTypeAvail {
   room_type: string
   room_type_name: string
+  room_type_code?: string
   available: number
+  total_rooms?: number
+  booked?: number
+  maintenance?: number
+  out_of_service?: number
   adults_capacity: number
+  children_capacity?: number
+  image?: string | null
+  media?: { url: string; caption?: string | null; media_type?: string }[]
+  bed_type?: string | null
+  room_view?: string | null
+  description?: string | null
   total: number
   per_night: number
+  rooms?: RoomItem[]
+  free_rooms?: RoomItem[]
 }
 interface PropAvail {
   property: string
@@ -146,6 +170,10 @@ export default function CRS() {
     property_name: string
     rt: RoomTypeAvail
   } | null>(null)
+  const [selectedRoom, setSelectedRoom] = useState<string>("")
+  const [expandedRt, setExpandedRt] = useState<Record<string, boolean>>({})
+  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; caption?: string | null } | null>(null)
+  const [bookingPhotoIdx, setBookingPhotoIdx] = useState(0)
   const [guest, setGuest] = useState({ name: "", phone: "" })
   const [done, setDone] = useState<string | null>(null)
   const [trip, setTrip] = useState<TripLeg[]>([])
@@ -162,7 +190,10 @@ export default function CRS() {
       .then(setTrips)
       .catch(() => setTrips([]))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadTrips() }, [])
+  useEffect(() => {
+    loadTrips()
+    search()
+  }, [])
 
   // the server prices the whole trip each time a stop changes
   useEffect(() => {
@@ -236,10 +267,13 @@ export default function CRS() {
         phone: guest.phone || null,
         adults,
         children,
+        room: selectedRoom || undefined,
+        assign_room: 1,
         source: "Manual",
       })
       setDone(t("Booked {ref} at {property}.", { ref: r.reservation, property: booking.property_name }))
-      setData(null)
+      setBooking(null)
+      search()
     } catch (e) {
       setError(serverError(e))
     } finally {
@@ -370,14 +404,14 @@ export default function CRS() {
           {data.properties.map((p) => (
             <Card key={p.property}>
               <CardContent className="p-4">
-                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-zinc-100 pb-2">
                   <div>
                     <span className="text-base font-semibold text-zinc-800">{p.property_name}</span>
                     <span className="ml-2 inline-flex items-center gap-1 text-xs text-zinc-400">
                       <MapPin className="size-3" />{p.city}
                     </span>
                   </div>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-xs font-medium text-zinc-600">
                     {t("{n} rooms · from {rate}/night", {
                       n: p.available_rooms,
                       rate: `${cur()}${inr(p.from_rate)}`,
@@ -385,33 +419,293 @@ export default function CRS() {
                   </span>
                 </div>
                 <div className="divide-y divide-zinc-100">
-                  {p.room_types.map((rt) => (
-                    <div key={rt.room_type} className="flex flex-wrap items-center gap-3 py-2.5">
-                      <BedDouble className="size-4 shrink-0 text-zinc-400" />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-zinc-800">{rt.room_type_name}</div>
-                        <div className="text-xs text-zinc-500">
-                          {t("{avail} left · sleeps {cap} · {rate}/night", {
-                            avail: rt.available,
-                            cap: rt.adults_capacity,
-                            rate: `${cur()}${inr(rt.per_night)}`,
-                          })}
+                  {p.room_types.map((rt) => {
+                    const isExpanded = !!expandedRt[rt.room_type]
+                    const roomPhotos = rt.media && rt.media.length > 0
+                      ? rt.media.filter((m) => m.media_type === "Image" || !m.media_type).map((m) => ({ url: m.url, caption: m.caption }))
+                      : rt.image ? [{ url: rt.image, caption: rt.room_type_name }] : []
+                    const mainPhoto = roomPhotos[0]?.url || rt.image || null
+                    const totalRoomsCount = rt.total_rooms ?? (rt.rooms?.length || 0)
+
+                    return (
+                      <div key={rt.room_type} className="py-3.5 space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                          {/* Room Picture / Thumbnail */}
+                          {mainPhoto ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewPhoto({ url: mainPhoto, caption: `${p.property_name} · ${rt.room_type_name}` })}
+                              className="group relative h-22 w-32 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 text-left cursor-pointer transition hover:opacity-95"
+                              title={t("Click to view photo")}
+                            >
+                              <img
+                                src={mainPhoto}
+                                alt={rt.room_type_name}
+                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              />
+                              {roomPhotos.length > 1 && (
+                                <span className="absolute bottom-1 right-1 flex items-center gap-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white shadow-xs">
+                                  <Camera className="size-2.5" />
+                                  {roomPhotos.length}
+                                </span>
+                              )}
+                            </button>
+                          ) : (
+                            <div className="flex h-22 w-32 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-400">
+                              <BedDouble className="size-8 stroke-[1.5]" />
+                            </div>
+                          )}
+
+                          {/* Room Details & Availability Summary */}
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-base font-semibold text-zinc-800">{rt.room_type_name}</span>
+                              {rt.room_type_code && (
+                                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-mono font-medium text-zinc-600">
+                                  {rt.room_type_code}
+                                </span>
+                              )}
+                              {rt.available > 0 ? (
+                                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                  rt.available <= 2 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                                }`}>
+                                  <span className={`size-1.5 rounded-full ${rt.available <= 2 ? "bg-amber-500" : "bg-emerald-500"}`} />
+                                  {rt.available <= 2
+                                    ? t("{n} left!", { n: rt.available })
+                                    : t("{n} available", { n: rt.available })}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800">
+                                  <span className="size-1.5 rounded-full bg-rose-500" />
+                                  {t("Sold out")}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Room Specs & Features */}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+                              <span>
+                                {t("Sleeps {cap}", { cap: rt.adults_capacity })}
+                                {rt.children_capacity ? ` + ${rt.children_capacity} ${t("ch")}` : ""}
+                              </span>
+                              {rt.bed_type && (
+                                <span className="inline-flex items-center gap-1">
+                                  · <span className="font-medium text-zinc-700">{rt.bed_type} Bed</span>
+                                </span>
+                              )}
+                              {rt.room_view && (
+                                <span className="inline-flex items-center gap-1">
+                                  · <span className="font-medium text-zinc-700">{rt.room_view} View</span>
+                                </span>
+                              )}
+                              <span className="text-zinc-400">
+                                · {t("{total} total rooms", { total: totalRoomsCount })}
+                              </span>
+                            </div>
+
+                            {/* Availability Counts Breakdown Strip */}
+                            <div className="flex flex-wrap items-center gap-2 pt-0.5 text-[11px]">
+                              <span className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-600">
+                                {t("Total:")} <strong className="text-zinc-800">{totalRoomsCount}</strong>
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-800 border border-emerald-200">
+                                <span className="size-1.5 rounded-full bg-emerald-500" />
+                                {t("Available:")} <strong>{rt.available}</strong>
+                              </span>
+                              {(rt.booked || 0) > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded bg-rose-50 px-1.5 py-0.5 text-rose-800 border border-rose-200">
+                                  <span className="size-1.5 rounded-full bg-rose-500" />
+                                  {t("Booked:")} <strong>{rt.booked}</strong>
+                                </span>
+                              )}
+                              {(rt.maintenance || 0) > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-800 border border-amber-200">
+                                  <span className="size-1.5 rounded-full bg-amber-500" />
+                                  {t("Maintenance:")} <strong>{rt.maintenance}</strong>
+                                </span>
+                              )}
+                              {(rt.out_of_service || 0) > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-700 border border-zinc-200">
+                                  <span className="size-1.5 rounded-full bg-zinc-400" />
+                                  {t("OOS:")} <strong>{rt.out_of_service}</strong>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Available Rooms List */}
+                            {rt.free_rooms && rt.free_rooms.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                <span className="text-xs font-medium text-zinc-500">{t("Free rooms:")}</span>
+                                {rt.free_rooms.map((rm) => (
+                                  <span
+                                    key={rm.name}
+                                    className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50/80 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800"
+                                  >
+                                    <span className="size-1.5 rounded-full bg-emerald-500" />
+                                    {rm.room_number}
+                                    {rm.housekeeping_status && (
+                                      <span className="text-[10px] text-emerald-600">({rm.housekeeping_status})</span>
+                                    )}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Toggle Room Status Board */}
+                            {rt.rooms && rt.rooms.length > 0 && (
+                              <div className="pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setExpandedRt((prev) => ({ ...prev, [rt.room_type]: !prev[rt.room_type] }))
+                                  }
+                                  className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800"
+                                >
+                                  {isExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                                  {isExpanded
+                                    ? t("Hide room availability board")
+                                    : t("Show all room availability ({n} rooms)", { n: rt.rooms.length })}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Price & Actions */}
+                          <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3 shrink-0 pt-2 sm:pt-0">
+                            <div className="text-left sm:text-right">
+                              <div className="text-base font-bold text-zinc-900">{cur()}{inr(rt.total)}</div>
+                              <div className="text-[11px] text-zinc-500">
+                                {cur()}{inr(rt.per_night)}/{t("night")} · {t("taxes in")}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                disabled={rt.available <= 0}
+                                onClick={() => {
+                                  setSelectedRoom(rt.free_rooms?.[0]?.name ?? "")
+                                  setBookingPhotoIdx(0)
+                                  setBooking({ property: p.property, property_name: p.property_name, rt })
+                                  setGuest({ name: "", phone: "" })
+                                }}
+                              >
+                                {t("Book")}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                title={t("Add this stay to a trip across properties")}
+                                onClick={() => addToTrip(p, rt)}
+                              >
+                                <Plus className="size-4" />
+                                {t("Add to trip")}
+                              </Button>
+                            </div>
+                          </div>
                         </div>
+
+                        {/* Collapsible Room Status Board */}
+                        {isExpanded && rt.rooms && (
+                          <div className="mt-2.5 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3.5 space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 pb-2">
+                              <span className="text-xs font-bold uppercase tracking-wider text-zinc-700">
+                                {t("{type} Room Availability Status ({checkIn} → {checkOut})", {
+                                  type: rt.room_type_name,
+                                  checkIn,
+                                  checkOut,
+                                })}
+                              </span>
+                              <div className="flex flex-wrap items-center gap-3 text-xs">
+                                <span className="flex items-center gap-1">
+                                  <span className="size-2 rounded-full bg-emerald-500" />
+                                  <span className="text-zinc-600">{t("Available")} ({rt.available})</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="size-2 rounded-full bg-rose-500" />
+                                  <span className="text-zinc-600">{t("Occupied / Booked")} ({rt.booked || 0})</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="size-2 rounded-full bg-amber-500" />
+                                  <span className="text-zinc-600">{t("Maintenance")} ({rt.maintenance || 0})</span>
+                                </span>
+                                {(rt.out_of_service || 0) > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <span className="size-2 rounded-full bg-zinc-400" />
+                                    <span className="text-zinc-600">{t("Out of Service")} ({rt.out_of_service})</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                              {rt.rooms.map((rm) => {
+                                const isAvail = rm.is_available
+                                const isOcc = rm.status === "Occupied"
+                                const isMaint = rm.status === "Maintenance"
+
+                                return (
+                                  <div
+                                    key={rm.name}
+                                    className={`rounded-lg border p-2 text-xs transition ${
+                                      isAvail
+                                        ? "border-emerald-300 bg-emerald-50/50 text-emerald-950"
+                                        : isOcc
+                                        ? "border-rose-200 bg-rose-50/40 text-rose-950"
+                                        : isMaint
+                                        ? "border-amber-200 bg-amber-50/40 text-amber-950"
+                                        : "border-zinc-200 bg-zinc-100 text-zinc-700"
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-bold">{t("Room {no}", { no: rm.room_number })}</span>
+                                      <span
+                                        className={`size-2.5 rounded-full ${
+                                          isAvail
+                                            ? "bg-emerald-500"
+                                            : isOcc
+                                            ? "bg-rose-500"
+                                            : isMaint
+                                            ? "bg-amber-500"
+                                            : "bg-zinc-400"
+                                        }`}
+                                      />
+                                    </div>
+                                    <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-500">
+                                      <span>{rm.floor ? t("Fl. {f}", { f: rm.floor }) : ""}</span>
+                                      <span
+                                        className={`font-semibold ${
+                                          isAvail
+                                            ? "text-emerald-700"
+                                            : isOcc
+                                            ? "text-rose-700"
+                                            : isMaint
+                                            ? "text-amber-700"
+                                            : "text-zinc-600"
+                                        }`}
+                                      >
+                                        {rm.status}
+                                      </span>
+                                    </div>
+                                    {rm.housekeeping_status && (
+                                      <div className="text-[10px] text-zinc-400">
+                                        {t("HK:")} {rm.housekeeping_status}
+                                      </div>
+                                    )}
+                                    {rm.conflict_reason && (
+                                      <div
+                                        className="mt-1 truncate text-[10px] text-rose-600"
+                                        title={rm.conflict_reason}
+                                      >
+                                        {rm.conflict_reason}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-semibold">{cur()}{inr(rt.total)}</div>
-                        <div className="text-[11px] text-zinc-400">{t("total, taxes in")}</div>
-                      </div>
-                      <Button variant="outline"
-                        onClick={() => { setBooking({ property: p.property, property_name: p.property_name, rt }); setGuest({ name: "", phone: "" }) }}>
-                        {t("Book")}
-                      </Button>
-                      <Button variant="ghost" title={t("Add this stay to a trip across properties")}
-                        onClick={() => addToTrip(p, rt)}>
-                        <Plus className="size-4" />{t("Add to trip")}
-                      </Button>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -456,30 +750,346 @@ export default function CRS() {
       {booking && (
         <Sheet
           title={t("Book {type}", { type: booking.rt.room_type_name })}
-          description={(`${booking.property_name} · ${checkIn} → ${checkOut} · ${cur()}${inr(booking.rt.total)} ${t("total")}`)}
+          description={`${booking.property_name} · ${checkIn} → ${checkOut} (${nights} ${nights === 1 ? t("night") : t("nights")})`}
           onClose={() => setBooking(null)}
           footer={
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setBooking(null)}>{t("Cancel")}</Button>
-              <Button disabled={busy || !guest.name.trim()} onClick={() => book().then(() => setBooking(null))}>
-                {t("Confirm booking")}
-              </Button>
+            <div className="flex justify-between items-center w-full">
+              <div className="text-left">
+                <div className="text-xs text-zinc-500">{t("Total Quote")}</div>
+                <div className="text-base font-bold text-zinc-900">{cur()}{inr(booking.rt.total)}</div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setBooking(null)}>{t("Cancel")}</Button>
+                <Button
+                  disabled={busy || !guest.name.trim()}
+                  onClick={() => book()}
+                >
+                  {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+                  {t("Confirm Booking")}
+                </Button>
+              </div>
             </div>
           }
         >
-          <div className="space-y-3">
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-zinc-600">{t("Guest name")}</span>
-              <input className={inputCls} value={guest.name} autoFocus
-                onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-zinc-600">{t("Phone")}</span>
-              <input className={inputCls} value={guest.phone} placeholder="+…"
-                onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
-            </label>
+          <div className="space-y-4">
+            {/* Room Photo Gallery */}
+            {(() => {
+              const photos = booking.rt.media && booking.rt.media.length > 0
+                ? booking.rt.media.filter((m) => m.media_type === "Image" || !m.media_type).map((m) => ({ url: m.url, caption: m.caption }))
+                : booking.rt.image ? [{ url: booking.rt.image, caption: booking.rt.room_type_name }] : []
+              const active = photos[bookingPhotoIdx] || photos[0] || null
+
+              if (!active) return null
+
+              return (
+                <div className="space-y-2">
+                  <div
+                    className="group relative h-48 w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 cursor-pointer shadow-xs"
+                    onClick={() => setPreviewPhoto({ url: active.url, caption: active.caption || `${booking.property_name} · ${booking.rt.room_type_name}` })}
+                  >
+                    <img
+                      src={active.url}
+                      alt={active.caption || booking.rt.room_type_name}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className="absolute bottom-2.5 left-3 right-3 flex items-end justify-between text-white">
+                      <div>
+                        <div className="text-sm font-semibold drop-shadow">{booking.rt.room_type_name}</div>
+                        {active.caption && (
+                          <div className="text-xs text-zinc-200 drop-shadow">{active.caption}</div>
+                        )}
+                      </div>
+                      <span className="rounded bg-black/60 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-xs flex items-center gap-1">
+                        <Camera className="size-3" />
+                        {bookingPhotoIdx + 1}/{photos.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {photos.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {photos.map((p, idx) => (
+                        <button
+                          key={p.url + idx}
+                          type="button"
+                          onClick={() => setBookingPhotoIdx(idx)}
+                          className={`relative h-14 w-20 shrink-0 overflow-hidden rounded-md border-2 transition ${
+                            idx === bookingPhotoIdx
+                              ? "border-brand-600 shadow-xs"
+                              : "border-transparent opacity-70 hover:opacity-100"
+                          }`}
+                        >
+                          <img src={p.url} alt="" className="h-full w-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Room Features Badges */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {booking.rt.bed_type && (
+                      <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700">
+                        {booking.rt.bed_type} Bed
+                      </span>
+                    )}
+                    {booking.rt.room_view && (
+                      <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700">
+                        {booking.rt.room_view} View
+                      </span>
+                    )}
+                    <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700">
+                      {t("Capacity: Up to {n} Adults", { n: booking.rt.adults_capacity })}
+                    </span>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Room Availability Summary Cards */}
+            <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-xs space-y-2">
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-zinc-800">
+                  {t("Room Availability Summary")}
+                </span>
+                <span className="text-xs text-zinc-500">
+                  {checkIn} → {checkOut}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="rounded-lg bg-zinc-50 p-2 border border-zinc-100">
+                  <div className="text-[11px] text-zinc-500">{t("Total")}</div>
+                  <div className="text-sm font-bold text-zinc-800">
+                    {booking.rt.total_rooms ?? (booking.rt.rooms?.length || 0)}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-emerald-50 p-2 border border-emerald-100">
+                  <div className="text-[11px] text-emerald-700">{t("Available")}</div>
+                  <div className="text-sm font-bold text-emerald-800">
+                    {booking.rt.available}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-rose-50 p-2 border border-rose-100">
+                  <div className="text-[11px] text-rose-700">{t("Booked")}</div>
+                  <div className="text-sm font-bold text-rose-800">
+                    {booking.rt.booked || 0}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-amber-50 p-2 border border-amber-100">
+                  <div className="text-[11px] text-amber-700">{t("Maint / OOS")}</div>
+                  <div className="text-sm font-bold text-amber-800">
+                    {(booking.rt.maintenance || 0) + (booking.rt.out_of_service || 0)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Dynamic Room Selection */}
+            <div className="rounded-xl border border-zinc-200 bg-white p-3.5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-zinc-800">
+                  {t("Room Assignment")}
+                </span>
+                {selectedRoom && (
+                  <span className="text-xs font-semibold text-blue-600 flex items-center gap-1">
+                    <Check className="size-3" />
+                    {t("Selected: {room}", {
+                      room: booking.rt.rooms?.find((r) => r.name === selectedRoom)?.room_number || selectedRoom,
+                    })}
+                  </span>
+                )}
+              </div>
+
+              {/* Dropdown Room Selector */}
+              <div>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-zinc-600">{t("Select Room Number")}</span>
+                  <select
+                    className={inputCls}
+                    value={selectedRoom}
+                    onChange={(e) => setSelectedRoom(e.target.value)}
+                  >
+                    <option value="">{t("-- Auto-assign best room on confirmation --")}</option>
+                    {booking.rt.free_rooms?.map((rm) => (
+                      <option key={rm.name} value={rm.name}>
+                        {t("Room {no} (Floor {f} · {hk})", {
+                          no: rm.room_number,
+                          f: rm.floor || "1",
+                          hk: rm.housekeeping_status || "Ready",
+                        })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {/* Visual Room Selection Grid */}
+              {booking.rt.rooms && booking.rt.rooms.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <span className="text-xs font-medium text-zinc-500">
+                    {t("Or select directly from room grid:")}
+                  </span>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {booking.rt.rooms.map((rm) => {
+                      const isSelected = selectedRoom === rm.name
+                      const isAvail = rm.is_available
+                      const isOcc = rm.status === "Occupied"
+                      const isMaint = rm.status === "Maintenance"
+
+                      return (
+                        <button
+                          key={rm.name}
+                          type="button"
+                          disabled={!isAvail}
+                          onClick={() => setSelectedRoom(isSelected ? "" : rm.name)}
+                          className={`relative flex flex-col p-2 rounded-lg border text-left transition ${
+                            isSelected
+                              ? "bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-500"
+                              : isAvail
+                              ? "bg-emerald-50/70 border-emerald-300 text-emerald-950 hover:bg-emerald-100 hover:border-emerald-400 cursor-pointer shadow-2xs"
+                              : isOcc
+                              ? "bg-rose-50 border-rose-200 text-rose-800 cursor-not-allowed opacity-75"
+                              : isMaint
+                              ? "bg-amber-50 border-amber-200 text-amber-800 cursor-not-allowed opacity-75"
+                              : "bg-zinc-100 border-zinc-200 text-zinc-600 cursor-not-allowed opacity-60"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs">
+                              {rm.room_number}
+                            </span>
+                            <span
+                              className={`size-2 rounded-full ${
+                                isSelected
+                                  ? "bg-white"
+                                  : isAvail
+                                  ? "bg-emerald-500"
+                                  : isOcc
+                                  ? "bg-rose-500"
+                                  : isMaint
+                                  ? "bg-amber-500"
+                                  : "bg-zinc-400"
+                              }`}
+                            />
+                          </div>
+                          <div className={`mt-0.5 text-[10px] ${isSelected ? "text-blue-100" : "text-zinc-500"}`}>
+                            {isSelected ? t("Selected") : rm.status}
+                          </div>
+                          {rm.housekeeping_status && (
+                            <div className={`text-[9px] ${isSelected ? "text-blue-200" : "text-zinc-400"}`}>
+                              {rm.housekeeping_status}
+                            </div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Indicators Legend */}
+                  <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-zinc-500">
+                    <span className="flex items-center gap-1">
+                      <span className="size-2 rounded-full bg-emerald-500" />
+                      {t("Available")}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="size-2 rounded-full bg-blue-600" />
+                      {t("Selected")}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="size-2 rounded-full bg-rose-500" />
+                      {t("Occupied")}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="size-2 rounded-full bg-amber-500" />
+                      {t("Maintenance")}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="size-2 rounded-full bg-zinc-400" />
+                      {t("OOS")}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Guest Details */}
+            <div className="rounded-xl border border-zinc-200 bg-white p-3.5 shadow-xs space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-800">
+                {t("Guest Information")}
+              </span>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-zinc-600">
+                    {t("Guest name")} <span className="text-rose-500">*</span>
+                  </span>
+                  <input
+                    className={inputCls}
+                    value={guest.name}
+                    placeholder={t("e.g. John Doe")}
+                    autoFocus
+                    onChange={(e) => setGuest({ ...guest, name: e.target.value })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-zinc-600">{t("Phone")}</span>
+                  <input
+                    className={inputCls}
+                    value={guest.phone}
+                    placeholder="+91…"
+                    onChange={(e) => setGuest({ ...guest, phone: e.target.value })}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Tariff Breakdown Quote */}
+            <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-3.5 text-xs text-brand-950 space-y-1.5">
+              <div className="font-semibold text-zinc-800">{t("Stay & Pricing Breakdown")}</div>
+              <div className="flex justify-between">
+                <span className="text-zinc-600">{t("Room Tariff ({nights} {n_lbl})", {
+                  nights,
+                  n_lbl: nights === 1 ? t("night") : t("nights"),
+                })}</span>
+                <span>{cur()}{inr(booking.rt.total)}</span>
+              </div>
+              <div className="flex justify-between border-t border-brand-200/60 pt-1 font-bold text-sm text-zinc-900">
+                <span>{t("Total Amount (Taxes included)")}</span>
+                <span>{cur()}{inr(booking.rt.total)}</span>
+              </div>
+            </div>
           </div>
         </Sheet>
+      )}
+
+      {/* Full Photo Preview Lightbox */}
+      {previewPhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-3xl overflow-hidden rounded-2xl bg-zinc-950 p-2 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute right-4 top-4 z-10 rounded-full bg-black/60 p-1.5 text-white transition hover:bg-black/90 cursor-pointer"
+            >
+              <X className="size-5" />
+            </button>
+            <img
+              src={previewPhoto.url}
+              alt=""
+              className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain mx-auto"
+            />
+            {previewPhoto.caption && (
+              <div className="p-3 text-center text-sm font-medium text-zinc-300">
+                {previewPhoto.caption}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )

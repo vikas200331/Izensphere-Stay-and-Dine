@@ -67,7 +67,7 @@ export default function Login(props: { onSuccess: () => void }) {
       className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#f7f9fb] px-4"
       style={{ colorScheme: "light" }}
     >
-      <div className="fixed inset-x-0 top-0 h-[5px] bg-[#1C3F38]" aria-hidden />
+      <div className="fixed inset-x-0 top-0 h-[5px] bg-[#142B49]" aria-hidden />
       <div className="w-full max-w-sm">
         {sessionEnded && (
           <p className="mb-4 rounded border border-[#fde68a] bg-[#fffbeb] px-4 py-2.5 text-center text-sm text-[#92400e]">
@@ -75,15 +75,9 @@ export default function Login(props: { onSuccess: () => void }) {
           </p>
         )}
         <div className="mb-6 flex flex-col items-center gap-2">
-          <img src={asset("kamra-mark.svg")} alt="Kamra" className="size-16" />
-          <span
-            className="text-2xl font-semibold tracking-[0.02em] text-[#1C3F38]"
-            style={{ fontFamily: "Montserrat, ui-sans-serif, system-ui, sans-serif" }}
-          >
-            kamra
-            <span className="ml-1.5 align-middle text-[10px] font-semibold tracking-[0.4em] text-[#1E7B4F]">
-              PMS
-            </span>
+          <img src={asset("izensphere-stay-and-dine-logo.svg")} alt="Izensphere Stay and Dine" className="h-16 object-contain" />
+          <span className="text-xs font-semibold tracking-[0.25em] text-[#C49A45] uppercase">
+            A World of Flavours
           </span>
           <label className="mt-1 flex items-center gap-2 text-xs text-[#6f7a71]">
             <span>{t("Language")}</span>
@@ -149,7 +143,7 @@ export default function Login(props: { onSuccess: () => void }) {
           )}
 
           <Button
-            className="w-full justify-center rounded bg-[#1E7B4F] py-2 text-white hover:bg-[#00613a] focus-visible:outline-[#1E7B4F]"
+            className="w-full justify-center rounded bg-[#142B49] py-2 text-white hover:bg-[#0E1E33] focus-visible:outline-[#142B49]"
             disabled={busy || !usr || !pwd}
             type="submit"
           >
@@ -160,7 +154,7 @@ export default function Login(props: { onSuccess: () => void }) {
         {demoMode && (
         <div className="mt-4 rounded border border-dashed border-[#bec9bf] p-4">
           <p className="mb-3 rounded bg-[#fffbeb] px-3 py-2 text-center text-xs leading-relaxed text-[#92400e]">
-            {t("Shared playground, not a live hotel. Play data is wiped every night and the sample hotel is seeded again. Don't put real guests, payments or API keys here.")}
+            {t("Izensphere Stay and Dine Demo Environment · A World of Flavours")}
           </p>
           <p className="mb-2 text-center text-xs text-[#6f7a71]">
             {t("Demo accounts - one tap to try each role")}
@@ -171,7 +165,7 @@ export default function Login(props: { onSuccess: () => void }) {
                 key={a.usr}
                 disabled={busy}
                 onClick={() => submit(a.usr, a.pwd)}
-                className="rounded border border-[#E2E8F0] bg-[#ffffff] px-2 py-1.5 text-xs font-medium text-[#3f4941] hover:border-[#1E7B4F] hover:text-[#00613a]"
+                className="rounded border border-[#E2E8F0] bg-[#ffffff] px-2 py-1.5 text-xs font-medium text-[#3f4941] hover:border-[#142B49] hover:text-[#142B49]"
               >
                 {t(a.label)}
               </button>
@@ -181,7 +175,7 @@ export default function Login(props: { onSuccess: () => void }) {
         )}
         {version && (
           <p className="mt-6 text-center text-[11px] text-[#6f7a71]">
-            Kamra PMS v{version}
+            Izensphere Stay and Dine v{version}
           </p>
         )}
       </div>

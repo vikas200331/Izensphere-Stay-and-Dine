@@ -42,7 +42,7 @@ interface HkTask {
 }
 
 // who may pass an inspection or verify a clean - the server enforces the same rule
-const SUPERVISOR_ROLES = ["Housekeeping Supervisor", "Front Desk", "Hotel Admin", "System Manager", "Kamra Agent"]
+const SUPERVISOR_ROLES = ["Housekeeping Supervisor", "Front Desk", "Hotel Admin", "System Manager", "Izensphere AI"]
 
 const isVideo = (url: string) => /\.(mp4|mov|webm|m4v|3gp|avi)$/i.test(url)
 

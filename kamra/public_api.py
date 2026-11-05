@@ -251,7 +251,7 @@ def site_info():
 	from kamra import __version__
 	return {
 		"demo_mode": frappe.db.get_default("kamra_demo_mode") == "1",
-		"app": "kamra",
+		"app": "Izensphere Stay and Dine",
 		"version": __version__,
 		# `bench --site <site> set-config kamra_channel nightly` labels a
 		# channel build so it isn't mistaken for the last stable release;

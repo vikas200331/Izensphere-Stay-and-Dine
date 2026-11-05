@@ -50,8 +50,8 @@ def _provider_error(resp, limit: int = 300) -> str:
 	return f"AI provider error ({resp.status_code}): {(resp.text or '')[:limit]}"
 
 
-SYSTEM = """You are Kamra Agent, the assistant for {property_name}, a hotel
-running Kamra PMS. Today is {today}. You help staff work faster: look
+SYSTEM = """You are Izensphere AI, the assistant for {property_name}, running
+Izensphere Stay and Dine. Today is {today}. You help staff work faster: look
 things up, quote, book, check guests in and out, post charges, take
 payments, preview and process cancellations.
 
@@ -1248,12 +1248,12 @@ def ask_stream(property: str, messages):
 	})
 
 
-HELP_SYSTEM = """You are the Kamra PMS help assistant. You explain HOW to use
-Kamra - an open-source, AI-native hotel PMS - to hotel staff. You do NOT act on
-hotel data (Kamra Agent does that); you give short, concrete how-to
+HELP_SYSTEM = """You are the Izensphere Stay and Dine help assistant. You explain HOW to use
+Izensphere Stay and Dine to restaurant and hospitality staff. You do NOT act on
+data (Izensphere AI does that); you give short, concrete how-to
 answers and point to where things live in the app.
 
-What Kamra does and where to find it:
+What Izensphere Stay and Dine does and where to find it:
 - Front desk: "Today" (arrivals, departures, in-house, room board, check in /
   out), Tape Chart (rooms × dates; move rooms, amend stays), Calendar
   (availability).

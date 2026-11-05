@@ -11,6 +11,18 @@ no_cache = 1
 
 
 def get_context(context):
+	if frappe.request:
+		path = frappe.request.path or ""
+		if path in ("/kamra", "/kamra/"):
+			frappe.local.flags.redirect_location = "/izensphere-stay-and-dine"
+			raise frappe.Redirect
+		elif path.startswith("/kamra/"):
+			frappe.local.flags.redirect_location = path.replace("/kamra", "/izensphere-stay-and-dine", 1)
+			raise frappe.Redirect
+	return get_context_for_spa(context)
+
+
+def get_context_for_spa(context):
 	"""Serve the built React SPA shell with the session CSRF token injected.
 
 	The front-end is built by Vite into kamra/public/frontend (served by Frappe
@@ -22,11 +34,11 @@ def get_context(context):
 	if not os.path.exists(index_path):
 		frappe.throw(
 			frappe._(
-				"Kamra front-end is not built. Run "
+				"Izensphere Stay and Dine front-end is not built. Run "
 				"<code>cd apps/kamra/frontend && yarn install && yarn build</code> "
 				"(Frappe Cloud runs this automatically on deploy)."
 			),
-			title="Kamra not built",
+			title="Izensphere Stay and Dine not built",
 		)
 
 	with open(index_path, encoding="utf-8") as f:  # nosemgrep: frappe-security-file-traversal -- serves the app's own built index.html from a fixed app path, not user input
@@ -49,7 +61,7 @@ def get_context(context):
 # Link previews and most crawlers never run the SPA, so the guest pages get
 # their title, description and image in the HTML itself. Staff screens and
 # tokenized check-in links are kept out of search.
-_GUEST = re.compile(r"^/(?:$|(?:kamra/)?book(?:/|$)|(?:kamra/)?stay/([^/]+))")
+_GUEST = re.compile(r"^/(?:$|(?:(?:kamra|izensphere-stay-and-dine|stay-and-dine)/)?book(?:/|$)|(?:(?:kamra|izensphere-stay-and-dine|stay-and-dine)/)?stay/([^/]+))")
 
 
 def _with_meta(html: str, path: str) -> str:

@@ -2333,7 +2333,7 @@ TOOLS: tuple[ToolSpec, ...] = (
 BY_NAME: dict[str, ToolSpec] = {t.name: t for t in TOOLS}
 TOOL_COUNT = len(TOOLS)
 INSTRUCTIONS = (
-	"You are operating a hotel through Kamra PMS. Money and "
+	"You are operating through Izensphere Stay and Dine. Money and "
 	"availability are computed by the PMS, never estimate them "
 	"yourself - always quote before booking. Confirm irreversible "
 	"actions (checkout, cancelling a stay, closing a folio) with the "

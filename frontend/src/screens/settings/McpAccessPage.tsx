@@ -171,7 +171,7 @@ export function McpAccessPage() {
               onToggle={() => setPolicy({ read_only: data.read_only ? 0 : 1 })} />
           </div>
           <p className="text-xs text-zinc-500">
-            {t("In Claude, set write tools to Needs approval as well: Kamra marks every tool as read-only or as making changes, and the destructive ones (cancel, void, check-out, night audit) separately.")}
+            {t("In Claude, set write tools to Needs approval as well: Izensphere Stay and Dine marks every tool as read-only or as making changes, and the destructive ones (cancel, void, check-out, night audit) separately.")}
           </p>
         </CardContent>
       </Card>
@@ -263,7 +263,7 @@ export function McpAccessPage() {
         <CardHeader>
           <div>
             <CardTitle>{t("Blocked tools")}</CardTitle>
-            <p className="mt-0.5 text-xs text-zinc-400">{t("Switch off single tools for AI clients at this property. Staff can still do the same thing in Kamra.")}</p>
+            <p className="mt-0.5 text-xs text-zinc-400">{t("Switch off single tools for AI clients at this property. Staff can still do the same thing in Izensphere Stay and Dine.")}</p>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">

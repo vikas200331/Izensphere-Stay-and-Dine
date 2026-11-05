@@ -132,7 +132,7 @@ export default function Agents() {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Sparkles className="size-5 text-brand-600" aria-hidden />
-            <h1 className="text-xl font-semibold tracking-tight">{translate("Kamra Agent")}</h1>
+            <h1 className="text-xl font-semibold tracking-tight">{translate("Izensphere AI Agent")}</h1>
           </div>
           <p className="mt-0.5 text-sm text-zinc-500">{translate("Chat here, or connect your AI provider. Either way it acts as you, within your role.")}</p>
         </div>
@@ -277,7 +277,7 @@ export function ActivityTab({ property }: { property: string }) {
         </select>
         <p className="text-xs text-zinc-400">
           {kind === "signins"
-            ? t("Who signed in to and out of Kamra, newest first.")
+            ? t("Who signed in to and out of Izensphere Stay and Dine, newest first.")
             : t("Every action on the property, newest first - who did it and what changed.")}
         </p>
       </div>
@@ -500,7 +500,7 @@ export function ConnectTab({ property }: { property: string }) {
             <CardTitle>{translate("AI Provider")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-zinc-600">{translate("AI provider connections are turned off on this site. On your own Kamra, every staff member can connect an AI provider and act within their role.")}</p>
+            <p className="text-sm text-zinc-600">{translate("AI provider connections are turned off on this site. On your own Izensphere Stay and Dine, every staff member can connect an AI provider and act within their role.")}</p>
           </CardContent>
         </Card>
       </div>
@@ -563,7 +563,7 @@ export function ConnectTab({ property }: { property: string }) {
           {info && info.active_grants > 0 && !info.last_mcp && (
             <p className="text-xs text-green-700">{translate("An AI provider is authorised for this property. Enable its connector in your AI chat, then ask about the hotel.")}</p>
           )}
-          <p className="text-sm text-zinc-600">{translate("Connect ChatGPT, Claude or another MCP-compatible AI provider using this hotel's MCP URL and OAuth. Sign in to Kamra, select the property and allow access. The Claude shortcut opens with the MCP URL filled in.")}</p>
+          <p className="text-sm text-zinc-600">{translate("Connect ChatGPT, Claude or another MCP-compatible AI provider using this hotel's MCP URL and OAuth. Sign in to Izensphere Stay and Dine, select the property and allow access. The Claude shortcut opens with the MCP URL filled in.")}</p>
           <p className="text-sm text-zinc-600">{translate("Enable the connector in your AI chat and say things like \"occupancy this week\" or \"book a Deluxe for Friday\".")}</p>
           {info && (
             <>

@@ -185,3 +185,203 @@ def execute():
 
 	frappe.db.commit()  # nosemgrep: frappe-manual-commit -- batch/seed/migration script runs outside the request cycle; explicit commit persists the staged writes
 	print("Kamra v8 schema (operational long tail) ready.")
+
+
+def seed_lost_and_found():
+	"""Seed comprehensive, realistic Lost & Found register data across properties."""
+	items = [
+		# ── Izensphere Beach Homestay (5 Rooms) ──
+		{
+			"property": "Izensphere Beach Homestay",
+			"item_description": "Apple iPad Air (Space Grey, 64GB) with dark green Smart Folio",
+			"condition": "Found",
+			"found_in_room": "Izensphere Beach Homestay-Room 2",
+			"found_on": "2026-11-04",
+			"found_by": "Anita (Housekeeping)",
+			"status": "In Storage",
+			"guest": "G-00521",
+			"notes": "Found on bedside nightstand during departure inspection. Stored in Reception Safe Locker #1.",
+		},
+		{
+			"property": "Izensphere Beach Homestay",
+			"item_description": "Ray-Ban Polarized Wayfarer Sunglasses in Brown Leather Case",
+			"condition": "Found",
+			"found_in_room": "Izensphere Beach Homestay-Room 1",
+			"found_on": "2026-11-03",
+			"found_by": "Raju (Floor Attendant)",
+			"status": "In Storage",
+			"guest": "G-00522",
+			"notes": "Found on the sea-facing balcony chair. Guest contacted via phone.",
+		},
+		{
+			"property": "Izensphere Beach Homestay",
+			"item_description": "Sony WH-1000XM4 Noise Canceling Headphones (Black)",
+			"condition": "Found",
+			"found_in_room": "Izensphere Beach Homestay-Room 3",
+			"found_on": "2026-11-02",
+			"found_by": "Lata (Housekeeping Attendant)",
+			"status": "Returned",
+			"guest": "G-00523",
+			"returned_on": "2026-11-03",
+			"notes": "Left under desk. Handed back to guest Amit Patel with identity verification.",
+		},
+		{
+			"property": "Izensphere Beach Homestay",
+			"item_description": "GoPro Hero 11 Black with orange floating hand grip",
+			"condition": "Found",
+			"found_in_room": "Izensphere Beach Homestay-Room 4",
+			"found_on": "2026-11-04",
+			"found_by": "Suresh (Security / Beach Deck)",
+			"status": "In Storage",
+			"guest": "G-00524",
+			"notes": "Found on poolside table outside Room 4. Logged in manager safe.",
+		},
+		{
+			"property": "Izensphere Beach Homestay",
+			"item_description": "Kindle Paperwhite 11th Gen with Blue Fabric Cover",
+			"condition": "Found",
+			"found_in_room": "Izensphere Beach Homestay-Room 5",
+			"found_on": "2026-11-01",
+			"found_by": "Kiran (Housekeeping)",
+			"status": "In Storage",
+			"guest": None,
+			"notes": "Found under bed pillows. Stored in Linen Room Locker A.",
+		},
+		{
+			"property": "Izensphere Beach Homestay",
+			"item_description": "Diamond Stud Earring (Single)",
+			"condition": "Missing",
+			"found_in_room": "Izensphere Beach Homestay-Room 1",
+			"found_on": "2026-11-04",
+			"found_by": "Priya Verma (Guest Report)",
+			"status": "In Storage",
+			"guest": "G-00522",
+			"notes": "Guest reported missing diamond earring after breakfast. Search underway in room and dining patio.",
+		},
+		{
+			"property": "Izensphere Beach Homestay",
+			"item_description": "Ceramic Tea Pot with Hand-painted Floral Artwork",
+			"condition": "Damaged",
+			"found_in_room": "Izensphere Beach Homestay-Room 3",
+			"found_on": "2026-11-03",
+			"found_by": "Lata (Housekeeping)",
+			"status": "Disposed",
+			"guest": "G-00523",
+			"notes": "Handle broken during guest stay. Replaced from stock and written off.",
+		},
+		{
+			"property": "Izensphere Beach Homestay",
+			"item_description": "Leather Passport Wallet with International Driving Permit",
+			"condition": "Found",
+			"found_in_room": "Izensphere Beach Homestay-Room 2",
+			"found_on": "2026-11-04",
+			"found_by": "Raju (Floor Attendant)",
+			"status": "In Storage",
+			"guest": "G-00521",
+			"notes": "Found in safe after checkout. Stored in Manager Safe; guest notified via SMS.",
+		},
+
+		# ── Izensphere Lakeside Villa ──
+		{
+			"property": "Izensphere Lakeside Villa",
+			"item_description": "MacBook Pro 14-inch Space Black with MagSafe 3 Charger",
+			"condition": "Found",
+			"found_in_room": "Izensphere Lakeside Villa-Room 2",
+			"found_on": "2026-11-04",
+			"found_by": "Vikas (Villa Housekeeper)",
+			"status": "In Storage",
+			"guest": "G-00521",
+			"notes": "Found on study table in upper floor suite. Placed in Villa Admin Safe.",
+		},
+		{
+			"property": "Izensphere Lakeside Villa",
+			"item_description": "Titan Raga Rose Gold Women Watch",
+			"condition": "Found",
+			"found_in_room": "Izensphere Lakeside Villa-Room 1",
+			"found_on": "2026-11-03",
+			"found_by": "Deepa (Housekeeping)",
+			"status": "In Storage",
+			"guest": "G-00522",
+			"notes": "Found on bathroom marble vanity. Stored in front office deposit box.",
+		},
+		{
+			"property": "Izensphere Lakeside Villa",
+			"item_description": "Samsonite Cabin Trolley Bag (Navy Blue)",
+			"condition": "Found",
+			"found_in_room": "Izensphere Lakeside Villa-Room 4",
+			"found_on": "2026-11-02",
+			"found_by": "Vikas (Housekeeper)",
+			"status": "Returned",
+			"guest": "G-00524",
+			"returned_on": "2026-11-02",
+			"notes": "Courier dispatched via Blue Dart per guest request; AWB #384918239.",
+		},
+
+		# ── Izensphere Palace & Resort ──
+		{
+			"property": "Izensphere Palace & Resort",
+			"item_description": "Montblanc Meisterstück Fountain Pen (Black & Gold)",
+			"condition": "Found",
+			"found_in_room": "Izensphere Palace & Resort-101",
+			"found_on": "2026-11-04",
+			"found_by": "Pooja (Housekeeping)",
+			"status": "In Storage",
+			"guest": "G-00521",
+			"notes": "Found inside executive desk drawer. Stored in Hotel Vault #4.",
+		},
+		{
+			"property": "Izensphere Palace & Resort",
+			"item_description": "Apple AirPods Pro (2nd Gen) with MagSafe Charging Case",
+			"condition": "Found",
+			"found_in_room": "Izensphere Palace & Resort-103",
+			"found_on": "2026-11-04",
+			"found_by": "Sunil (Captain)",
+			"status": "In Storage",
+			"guest": "G-00523",
+			"notes": "Found under armchair in living area. Guest informed.",
+		},
+
+		# ── Izensphere Stay and Dine ──
+		{
+			"property": "Izensphere Stay and Dine",
+			"item_description": "Apple Watch Ultra 2 with Orange Alpine Loop",
+			"condition": "Found",
+			"found_in_room": "Izensphere Dine-101",
+			"found_on": "2026-11-04",
+			"found_by": "Ramesh (Supervisor)",
+			"status": "In Storage",
+			"guest": "G-00521",
+			"notes": "Found near bedside charging stand. Kept in Main Cashier Safe.",
+		},
+		{
+			"property": "Izensphere Stay and Dine",
+			"item_description": "Designer Silk Scarf (Burberry Vintage Check)",
+			"condition": "Found",
+			"found_in_room": "Izensphere Dine-201",
+			"found_on": "2026-11-03",
+			"found_by": "Sunita (Housekeeping)",
+			"status": "Returned",
+			"guest": "G-00522",
+			"returned_on": "2026-11-04",
+			"notes": "Returned to guest at check-out desk after signature on register.",
+		},
+	]
+
+	created = 0
+	for itm in items:
+		# check if an item with exact description and property exists
+		if frappe.db.exists("Lost And Found Item", {
+			"property": itm["property"],
+			"item_description": itm["item_description"]
+		}):
+			continue
+		doc = frappe.get_doc({
+			"doctype": "Lost And Found Item",
+			**itm,
+		})
+		doc.insert(ignore_permissions=True)
+		created += 1
+
+	frappe.db.commit()
+	print(f"Seeded {created} new Lost & Found items successfully.")
+

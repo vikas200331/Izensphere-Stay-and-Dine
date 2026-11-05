@@ -71,7 +71,7 @@ export default function ManagementBooks({ view }: { view: "pnl" | "balance" }) {
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{translate("Books")}</p>
           <h1 className="text-2xl font-semibold">{translate(view === "pnl" ? "Profit and loss" : "Balance sheet")}</h1>
-          <p className="text-sm text-zinc-500">{translate("Management view from what Kamra records. Not statutory accounts.")}</p>
+          <p className="text-sm text-zinc-500">{translate("Management view from what Izensphere Stay and Dine records. Not statutory accounts.")}</p>
         </div>
         <div className="inline-flex rounded-lg border border-zinc-200 p-0.5 text-sm">
           <Link to="/profit-and-loss" className={`rounded-md px-3 py-1 ${view === "pnl" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}>{translate("Profit and loss")}</Link>
@@ -162,7 +162,7 @@ function ProfitAndLoss() {
         </div>
       ) : null}
       <Note>
-        {translate("This is a management P&L. It counts what Kamra records: guest and company bills, restaurant bills, banquets, supplier bills and petty cash. Payroll, depreciation, loans and anything paid outside Kamra are not in it. Your accountant keeps the statutory books from the Accounting Export.")}
+        {translate("This is a management P&L. It counts what Izensphere Stay and Dine records: guest and company bills, restaurant bills, banquets, supplier bills and petty cash. Payroll, depreciation, loans and anything paid outside Izensphere Stay and Dine are not in it. Your accountant keeps the statutory books from the Accounting Export.")}
       </Note>
     </>
   )
@@ -215,7 +215,7 @@ function BalanceSheet() {
         </div>
       ) : null}
       <Note>
-        {translate("Only what Kamra can see. Your bank balance, fixed assets, loans and equity are not in Kamra, so this is not a full balance sheet. Tax is shown for reference: Kamra does not record what you have paid to the government.")}
+        {translate("Only what Izensphere Stay and Dine can see. Your bank balance, fixed assets, loans and equity are not in Izensphere Stay and Dine, so this is not a full balance sheet. Tax is shown for reference: Izensphere Stay and Dine does not record what you have paid to the government.")}
       </Note>
     </>
   )

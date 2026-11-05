@@ -1,27 +1,27 @@
 app_name = "kamra"
-app_title = "Kamra"
-app_publisher = "HeyKoala"
+app_title = "Izensphere Stay and Dine"
+app_publisher = "Izensphere"
 app_description = (
-	"Open-source, AI-native hotel PMS — front desk, direct booking, "
-	"housekeeping, folios and GST billing, with an MCP tool layer so AI "
-	"agents can run the property."
+	"Izensphere Stay and Dine — A World of Flavours. "
+	"Hotel PMS, Restaurant POS, Kitchen Display System, room & table management, orders, "
+	"reservations, folios and GST billing."
 )
-app_email = "hello@kamrapms.com"
+app_email = "dine@izensphere.com"
 app_license = "agpl-3.0"
 
 # Branding shown in the Desk navbar, app switcher and marketplace listing.
-app_logo_url = "/assets/kamra/kamra-mark.svg"
+app_logo_url = "/files/izensphere-stay-and-dine-logo.svg"
 app_icon = "octicon octicon-home"
-app_color = "#1E7B4F"
+app_color = "#142B49"
 
-# The product UI is the React SPA at /kamra; surface it in the Apps launcher
+# The product UI is the React SPA at /izensphere-stay-and-dine; surface it in the Apps launcher
 # (and the /apps grid) so users land on it instead of the Desk.
 add_to_apps_screen = [
 	{
 		"name": "kamra",
-		"logo": "/assets/kamra/kamra-mark.svg",
-		"title": "Kamra",
-		"route": "/kamra",
+		"logo": "/files/izensphere-stay-and-dine-logo.svg",
+		"title": "Izensphere Stay and Dine",
+		"route": "/izensphere-stay-and-dine",
 	}
 ]
 
@@ -113,17 +113,19 @@ kamra_localization = {
 # page (kamra/www/kamra.py) serves the built shell with the CSRF token
 # injected; every deep link falls through to it so browser refresh works.
 website_route_rules = [
+	{"from_route": "/izensphere-stay-and-dine/<path:app_path>", "to_route": "izensphere-stay-and-dine"},
+	{"from_route": "/stay-and-dine/<path:app_path>", "to_route": "izensphere-stay-and-dine"},
 	{"from_route": "/kamra/<path:app_path>", "to_route": "kamra"},
 ]
 
 # Clean, shareable guest URLs redirect into the SPA's routes.
 website_redirects = [
-	{"source": r"/book$", "target": "/kamra/book"},
-	{"source": r"/book/(.*)", "target": r"/kamra/book/\1"},
-	{"source": r"/stay$", "target": "/kamra/stay"},
-	{"source": r"/stay/(.*)", "target": r"/kamra/stay/\1"},
-	{"source": r"/hk$", "target": "/kamra/hk"},
-	{"source": r"/checkin/(.*)", "target": r"/kamra/checkin/\1"},
+	{"source": r"/book$", "target": "/izensphere-stay-and-dine/book"},
+	{"source": r"/book/(.*)", "target": r"/izensphere-stay-and-dine/book/\1"},
+	{"source": r"/stay$", "target": "/izensphere-stay-and-dine/stay"},
+	{"source": r"/stay/(.*)", "target": r"/izensphere-stay-and-dine/stay/\1"},
+	{"source": r"/hk$", "target": "/izensphere-stay-and-dine/hk"},
+	{"source": r"/checkin/(.*)", "target": r"/izensphere-stay-and-dine/checkin/\1"},
 ]
 
 # Each item in the list will be shown as an app in the apps page

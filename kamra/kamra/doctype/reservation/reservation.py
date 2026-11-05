@@ -277,6 +277,7 @@ class Reservation(Document):
 		self.validate_occupancy()
 		self.validate_room_belongs_to_type()
 		self.validate_no_overlap()
+		self.validate_room_available()
 		self.validate_itinerary_leg()
 		self.validate_room_vacant()
 		self.validate_villa_lockout()
@@ -788,10 +789,49 @@ class Reservation(Document):
 		)
 		if conflict:
 			frappe.throw(
-				_("Room {0} is already booked ({1}) for these dates.").format(
-					self.room, conflict[0][0]
-				),
+				_("This room is no longer available for the selected dates. Please select another room."),
 				title=_("Double booking blocked"),
+				exc=InventoryRefused,
+			)
+
+	def validate_room_available(self):
+		"""Ensure the room is not Out of Order, under maintenance, or blocked."""
+		if not self.room or self.status in (
+			"Cancelled", "No Show", "Checked Out", "Waitlist",
+			"Inquiry", "Quoted", "Requested",
+		):
+			return
+
+		# 1. Verify housekeeping status is not Out of Order
+		hk = frappe.db.get_value("Room", self.room, "housekeeping_status")
+		if hk == "Out of Order":
+			frappe.throw(
+				_("This room is no longer available for the selected dates. Please select another room."),
+				title=_("Room Out of Service"),
+				exc=InventoryRefused,
+			)
+
+		# 2. Verify no active Room Block covers these dates
+		blocked = frappe.db.sql(
+			"""
+			SELECT name, reason FROM `tabRoom Block`
+			WHERE room = %(room)s
+			  AND block_status = 'Active'
+			  AND from_date < GREATEST(%(check_out)s, DATE_ADD(%(check_in)s, INTERVAL 1 DAY))
+			  AND to_date > %(check_in)s
+			LIMIT 1
+			FOR UPDATE
+			""",
+			{
+				"room": self.room,
+				"check_in": self.check_in_date,
+				"check_out": self.check_out_date,
+			},
+		)
+		if blocked:
+			frappe.throw(
+				_("This room is no longer available for the selected dates. Please select another room."),
+				title=_("Room Under Maintenance"),
 				exc=InventoryRefused,
 			)
 

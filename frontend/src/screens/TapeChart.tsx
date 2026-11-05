@@ -948,7 +948,7 @@ export default function TapeChart() {
                 {datesChanged && datesValid && datePreview?.charged_nights && (
                   <p className="text-xs text-zinc-500">
                     {datePreview.charged_nights.credit_total < 0
-                      ? t("Nights already charged keep their line; Kamra credits {amt} for the lower rate.", {
+                      ? t("Nights already charged keep their line; Izensphere Stay and Dine credits {amt} for the lower rate.", {
                           amt: money(-datePreview.charged_nights.credit_total),
                         })
                       : datePreview.charged_nights.kept_difference > 0

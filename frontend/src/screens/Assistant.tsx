@@ -100,7 +100,7 @@ function AiSetupNotice() {
         <KeyRound className="size-5 text-brand-600" aria-hidden />
       </span>
       <h2 className="mt-4 text-lg font-semibold tracking-tight text-zinc-900">{translate("Add an AI key to start")}</h2>
-      <p className="mt-1 text-sm text-zinc-500">{translate("Kamra Agent runs on your own AI account. It takes about two minutes.")}</p>
+      <p className="mt-1 text-sm text-zinc-500">{translate("Izensphere AI runs on your own AI account. It takes about two minutes.")}</p>
       <ol className="mt-5 space-y-2.5 text-left">
         {SETUP_STEPS.map((step, i) => (
           <li

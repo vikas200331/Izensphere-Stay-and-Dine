@@ -1,11 +1,12 @@
-/*  The Kamra app suite. One PMS, several apps - like a workspace suite:
+/*  The Izensphere Stay and Dine app suite. One PMS, several apps - like a workspace suite:
     Front Desk is where the day happens; Housekeeping, Operations, Events,
     Revenue, Finance and Admin are their own rooms. The switcher in the top
     bar and the /apps launcher move between them; Search (Ctrl/Cmd+K) jumps
     anywhere and the sidebar follows.
 
-    Every app is open and included - Kamra is fully open source. */
+    Every app is open and included - Izensphere Stay and Dine is fully open source. */
 
+import { toFullPath } from "./routing"
 import {
   BadgePercent,
   Share2,
@@ -89,7 +90,7 @@ export interface AppNavItem {
   group?: string
   /** Other words search (Ctrl/Cmd+K) finds this page by. */
   keywords?: string[]
-  /** Drawn as a highlighted entry in the sidebar (Kamra Agent). */
+  /** Drawn as a highlighted entry in the sidebar (Izensphere AI). */
   featured?: boolean
 }
 
@@ -118,7 +119,7 @@ export const APPS: AppDef[] = [
     roles: ["Front Desk", "Night Auditor", "Hotel Admin", "System Manager", "Administrator"],
     items: [
       { to: "/", label: "Today", icon: Home },
-      { to: "/assistant", label: "Kamra Agent", icon: Sparkles, featured: true,
+      { to: "/assistant", label: "Izensphere AI", icon: Sparkles, featured: true,
         keywords: ["AI", "Assistant", "Copilot", "Ask"] },
       { to: "/in-house", label: "In House", icon: BedDouble,
         keywords: ["Arrivals", "Departures", "In-house guests", "Who is in", "Due out"] },
@@ -168,7 +169,7 @@ export const APPS: AppDef[] = [
       { to: "/laundry", label: "Laundry", icon: Shirt },
       { to: "/lost-found", label: "Lost & Found", icon: PackageSearch },
       { to: "/reports", label: "Reports", icon: ChartLine },
-      { href: "/kamra/hk", label: "Phone App", icon: Smartphone },
+      { href: toFullPath("/hk"), label: "Phone App", icon: Smartphone },
       { to: "/settings/housekeeping", label: "Settings", icon: SettingsIcon,
         roles: ["Housekeeping Supervisor", "Hotel Admin", "System Manager", "Administrator"] },
     ],

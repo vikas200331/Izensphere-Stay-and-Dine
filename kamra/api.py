@@ -5870,14 +5870,31 @@ def set_late_arrival(reservation: str, late_arrival: int = 1,
 def booking_options(property: str):
 	"""Everything the booking form needs to render its dropdowns."""
 	from kamra.channel_manager import channel_commission_pcts
+	room_types = frappe.get_all(
+		"Room Type", filters={"property": property, "disabled": 0},
+		fields=["name", "room_type_code", "room_type_name", "base_price",
+		        "adults_capacity", "children_capacity", "room_category",
+		        "max_extra_beds", "image", "description", "bed_type", "room_view"],
+		order_by="base_price asc",
+	)
+	rt_names = [rt.name for rt in room_types]
+	media_by_rt = {}
+	if rt_names:
+		m_rows = frappe.get_all(
+			"Room Type Media",
+			filters={"parent": ["in", rt_names]},
+			fields=["parent", "media_type", "url", "caption"],
+			order_by="idx asc",
+		)
+		for m in m_rows:
+			media_by_rt.setdefault(m.parent, []).append(m)
+	for rt in room_types:
+		rt["media"] = media_by_rt.get(rt.name, [])
+		if not rt.get("image") and rt["media"]:
+			rt["image"] = rt["media"][0].get("url")
+
 	return {
-		"room_types": frappe.get_all(
-			"Room Type", filters={"property": property, "disabled": 0},
-			fields=["name", "room_type_code", "room_type_name", "base_price",
-			        "adults_capacity", "children_capacity", "room_category",
-			        "max_extra_beds"],
-			order_by="base_price asc",
-		),
+		"room_types": room_types,
 		"meal_plans": frappe.get_all(
 			"Meal Plan", filters={"property": property, "disabled": 0},
 			fields=["name", "code", "label", "price_per_adult", "is_default"],
@@ -7066,6 +7083,208 @@ def inventory_availability(property: str, check_in_date: str, check_out_date: st
 		check_out_date=check_out_date,
 		include_reasons=bool(int(include_reasons or 0)),
 	)
+
+
+@frappe.whitelist()
+@require_roles("Front Desk", "Kamra Agent", "Revenue Manager", "Hotel Admin")
+def get_booking_availability(property: str, check_in_date: str, check_out_date: str,
+                             room_type: str | None = None, adults: int = 1,
+                             children: int = 0, is_day_use: int = 0,
+                             check_in_time: str | None = None,
+                             check_out_time: str | None = None,
+                             ready_now: int = 0):
+	"""Dynamic room availability for booking creation.
+	Returns summary counts across all room types and detailed room statuses
+	(Available, Occupied, Maintenance, Out of Service) with date-overlap logic."""
+	from frappe.utils import getdate, nowdate, add_days, cint, flt, formatdate
+	from kamra.crs import assert_property_access
+	assert_property_access(property)
+
+	is_day_use = cint(is_day_use)
+	if str(check_in_date) == str(check_out_date):
+		is_day_use = 1
+
+	d_in = getdate(check_in_date)
+	if is_day_use:
+		d_out = d_in
+		query_out = add_days(d_in, 1)
+	else:
+		d_out = getdate(check_out_date)
+		if d_out <= d_in:
+			d_out = add_days(d_in, 1)
+		query_out = d_out
+
+	room_types = frappe.get_all(
+		"Room Type",
+		filters={"property": property, "disabled": 0},
+		fields=["name", "room_type_name", "room_type_code", "base_price",
+		        "adults_capacity", "children_capacity", "max_extra_beds", "room_category",
+		        "image", "description", "bed_type", "room_view"],
+		order_by="base_price asc",
+	)
+	rt_names = [rt.name for rt in room_types]
+	media_by_rt = {}
+	if rt_names:
+		m_rows = frappe.get_all(
+			"Room Type Media",
+			filters={"parent": ["in", rt_names]},
+			fields=["parent", "media_type", "url", "caption"],
+			order_by="idx asc",
+		)
+		for m in m_rows:
+			media_by_rt.setdefault(m.parent, []).append(m)
+
+	all_rooms = frappe.get_all(
+		"Room",
+		filters={"property": property},
+		fields=["name", "room_number", "room_type", "floor", "housekeeping_status"],
+		order_by="room_type asc, room_number asc",
+	)
+
+	active_res = frappe.db.sql(
+		"""
+		SELECT name, room, room_type, status, guest_name, check_in_date, check_out_date,
+		       is_day_use, planned_check_in_time, planned_check_out_time
+		FROM `tabReservation`
+		WHERE property = %(property)s
+		  AND room IS NOT NULL AND room != ''
+		  AND status IN ('Confirmed', 'Checked In', 'Held', 'Pending Payment')
+		  AND check_in_date < GREATEST(%(check_out)s, DATE_ADD(%(check_in)s, INTERVAL 1 DAY))
+		  AND GREATEST(check_out_date, DATE_ADD(check_in_date, INTERVAL 1 DAY)) > %(check_in)s
+		""",
+		{"property": property, "check_in": str(d_in), "check_out": str(query_out)},
+		as_dict=True,
+	)
+	room_res_map = {}
+	for r in active_res:
+		room_res_map.setdefault(r.room, []).append(r)
+
+	room_blocks = frappe.db.sql(
+		"""
+		SELECT name, room, reason, from_date, to_date, block_status
+		FROM `tabRoom Block`
+		WHERE property = %(property)s
+		  AND block_status = 'Active'
+		  AND from_date < GREATEST(%(check_out)s, DATE_ADD(%(check_in)s, INTERVAL 1 DAY))
+		  AND to_date > %(check_in)s
+		""",
+		{"property": property, "check_in": str(d_in), "check_out": str(query_out)},
+		as_dict=True,
+	)
+	room_block_map = {}
+	for b in room_blocks:
+		room_block_map.setdefault(b.room, []).append(b)
+
+	occupied_now = set()
+	if ready_now or d_in <= getdate(nowdate()):
+		occupied_now = in_house_rooms(property)
+
+	rooms_evaluated = []
+	for rm in all_rooms:
+		r_id = rm.name
+		hk = rm.housekeeping_status or "Clean"
+		blocks = room_block_map.get(r_id, [])
+		bookings = room_res_map.get(r_id, [])
+
+		status = "Available"
+		is_available = True
+		conflict_reason = None
+		guest_name = None
+
+		if hk == "Out of Order":
+			status = "Out of Service"
+			is_available = False
+			conflict_reason = _("Room is Out of Order")
+		elif any(b.reason in ("Owner", "House Use", "VIP Hold", "Other") for b in blocks):
+			status = "Out of Service"
+			is_available = False
+			b_item = [b for b in blocks if b.reason in ("Owner", "House Use", "VIP Hold", "Other")][0]
+			conflict_reason = _("Blocked: {0}").format(b_item.reason)
+		elif any(b.reason == "Maintenance" for b in blocks):
+			status = "Maintenance"
+			is_available = False
+			m_blk = [b for b in blocks if b.reason == "Maintenance"][0]
+			conflict_reason = _("Under Maintenance ({0} to {1})").format(formatdate(m_blk.from_date), formatdate(m_blk.to_date))
+		elif bookings:
+			time_conflict = True
+			if is_day_use and check_in_time and check_out_time:
+				time_conflict = False
+				for bk in bookings:
+					if bk.is_day_use and bk.planned_check_in_time and bk.planned_check_out_time:
+						if str(bk.planned_check_in_time) < str(check_out_time) and str(bk.planned_check_out_time) > str(check_in_time):
+							time_conflict = True
+							guest_name = bk.guest_name
+							conflict_reason = _("Booked: {0} ({1} - {2})").format(bk.guest_name or bk.name, str(bk.planned_check_in_time)[:5], str(bk.planned_check_out_time)[:5])
+							break
+					else:
+						time_conflict = True
+						guest_name = bk.guest_name
+						conflict_reason = _("Booked by {0} ({1})").format(bk.guest_name or bk.name, bk.name)
+						break
+			else:
+				bk = bookings[0]
+				guest_name = bk.guest_name
+				conflict_reason = _("Booked by {0} ({1} to {2})").format(bk.guest_name or bk.name, formatdate(bk.check_in_date), formatdate(bk.check_out_date))
+
+			if time_conflict:
+				status = "Occupied"
+				is_available = False
+		elif (ready_now or d_in <= getdate(nowdate())) and r_id in occupied_now:
+			status = "Occupied"
+			is_available = False
+			conflict_reason = _("Occupied by in-house guest")
+
+		rooms_evaluated.append({
+			"name": rm.name,
+			"room_number": rm.room_number,
+			"room_type": rm.room_type,
+			"floor": rm.floor or "",
+			"housekeeping_status": hk,
+			"status": status,
+			"is_available": is_available,
+			"conflict_reason": conflict_reason,
+			"guest_name": guest_name,
+		})
+
+	summary = []
+	for rt in room_types:
+		rt_rooms = [r for r in rooms_evaluated if r["room_type"] == rt.name]
+		total_cnt = len(rt_rooms)
+		avail_cnt = sum(1 for r in rt_rooms if r["is_available"])
+		booked_cnt = sum(1 for r in rt_rooms if r["status"] == "Occupied")
+		maint_cnt = sum(1 for r in rt_rooms if r["status"] == "Maintenance")
+		oos_cnt = sum(1 for r in rt_rooms if r["status"] == "Out of Service")
+
+		summary.append({
+			"room_type": rt.name,
+			"room_type_name": rt.room_type_name,
+			"room_type_code": rt.room_type_code or "",
+			"base_price": flt(rt.base_price),
+			"adults_capacity": cint(rt.adults_capacity or 2),
+			"children_capacity": cint(rt.children_capacity or 0),
+			"max_extra_beds": cint(rt.max_extra_beds or 0),
+			"image": rt.get("image") or (media_by_rt.get(rt.name, [{}])[0].get("url") if media_by_rt.get(rt.name) else None),
+			"description": rt.get("description") or "",
+			"bed_type": rt.get("bed_type") or "",
+			"room_view": rt.get("room_view") or "",
+			"media": media_by_rt.get(rt.name, []),
+			"total": total_cnt,
+			"available": avail_cnt,
+			"booked": booked_cnt,
+			"maintenance": maint_cnt,
+			"out_of_service": oos_cnt,
+		})
+
+	filtered_rooms = [r for r in rooms_evaluated if not room_type or r["room_type"] == room_type]
+
+	return {
+		"property": property,
+		"check_in_date": str(d_in),
+		"check_out_date": str(d_out),
+		"is_day_use": is_day_use,
+		"summary": summary,
+		"rooms": filtered_rooms,
+	}
 
 
 @frappe.whitelist()
