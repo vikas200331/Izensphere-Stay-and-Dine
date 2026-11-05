@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="goldGradMark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D4AF37"/>
+      <stop offset="50%" stop-color="#C49A45"/>
+      <stop offset="100%" stop-color="#AA8232"/>
+    </linearGradient>
+    <linearGradient id="navyGradMark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A63"/>
+      <stop offset="100%" stop-color="#142B49"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Rounded Square Base -->
+  <rect x="2" y="2" width="96" height="96" rx="22" fill="url(#navyGradMark)"/>
+  <rect x="5" y="5" width="90" height="90" rx="19" fill="none" stroke="url(#goldGradMark)" stroke-width="2.5"/>
+
+  <!-- Cloche Dome -->
+  <path d="M30 52 Q50 28 70 52 Z" fill="url(#goldGradMark)"/>
+  <!-- Cloche Handle -->
+  <circle cx="50" cy="26" r="4.5" fill="url(#goldGradMark)"/>
+  <!-- Tray Rim -->
+  <rect x="26" y="53" width="48" height="4.5" rx="2.25" fill="url(#goldGradMark)"/>
+
+  <!-- Tray Stem & Stand -->
+  <path d="M47 59 H53 V69 H47 Z" fill="url(#goldGradMark)"/>
+  <path d="M37 70 Q50 73 63 70 L65 73 Q50 77 35 73 Z" fill="url(#goldGradMark)"/>
+
+  <!-- Shimmer Star -->
+  <polygon points="50,15 51.8,19.5 56.5,21 51.8,22.5 50,27 48.2,22.5 43.5,21 48.2,19.5" fill="#FFF"/>
+</svg>
+

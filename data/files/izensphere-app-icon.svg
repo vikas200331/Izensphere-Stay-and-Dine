@@ -1,0 +1,38 @@
+<svg width="118" height="118" viewBox="0 0 118 118" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D4AF37"/>
+      <stop offset="50%" stop-color="#C49A45"/>
+      <stop offset="100%" stop-color="#AA8232"/>
+    </linearGradient>
+    <linearGradient id="navyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A63"/>
+      <stop offset="100%" stop-color="#142B49"/>
+    </linearGradient>
+    <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.25" flood-color="#0A1626"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle rounded background matching ERPNext & Education -->
+  <rect width="118" height="118" rx="24" fill="url(#navyGrad)"/>
+  <rect x="1" y="1" width="116" height="116" rx="23" stroke="url(#goldGrad)" stroke-width="1.5" stroke-opacity="0.4"/>
+
+  <!-- Gold decorative ring -->
+  <circle cx="59" cy="59" r="42" stroke="url(#goldGrad)" stroke-width="2.5" fill="none"/>
+  <circle cx="59" cy="59" r="38" stroke="url(#goldGrad)" stroke-width="1" stroke-dasharray="2,3" stroke-opacity="0.6" fill="none"/>
+
+  <!-- Fork & Knife Cloche Emblem -->
+  <!-- Cloche dome -->
+  <path d="M41 62 Q59 38 77 62 Z" fill="url(#goldGrad)"/>
+  <circle cx="59" cy="35" r="4" fill="url(#goldGrad)"/>
+  <rect x="37" y="63" width="44" height="4" rx="2" fill="url(#goldGrad)"/>
+
+  <!-- Stem and Base plate -->
+  <path d="M57 69 H61 V77 H57 Z" fill="url(#goldGrad)"/>
+  <path d="M48 78 Q59 81 70 78 L72 80 Q59 84 46 80 Z" fill="url(#goldGrad)"/>
+
+  <!-- Star sparkle -->
+  <polygon points="59,23 60.5,27.5 64.5,29 60.5,30.5 59,35 57.5,30.5 53.5,29 57.5,27.5" fill="#FFFFFF"/>
+</svg>
+
