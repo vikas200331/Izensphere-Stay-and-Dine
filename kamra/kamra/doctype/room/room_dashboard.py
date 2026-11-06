@@ -13,3 +13,4 @@ def get_data():
 			{"label": _("Operations"), "items": ["Service Ticket", "Laundry Order"]},
 		],
 	}
+
